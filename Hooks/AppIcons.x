@@ -1,5 +1,6 @@
 #import "../LiquidGlass.h"
 #import "../Shared/LGHookSupport.h"
+#import "../Shared/LGBannerCaptureSupport.h"
 #import "../Shared/LGPrefAccessors.h"
 #import <objc/runtime.h>
 
@@ -10,7 +11,9 @@ static void *kAppIconGlassKey = &kAppIconGlassKey;
 static void *kAppIconTintKey = &kAppIconTintKey;
 static void *kAppIconOriginalTransformKey = &kAppIconOriginalTransformKey;
 static void *kAppIconLastGlassFrameKey = &kAppIconLastGlassFrameKey;
+static void *kAppIconBackdropViewKey = &kAppIconBackdropViewKey;
 static const CGFloat kAppIconImageScale = 0.99;
+static void LGAppIconsRefreshAllHosts(void);
 
 LG_ENABLED_BOOL_PREF_FUNC(LGAppIconsEnabled, "AppIcons.Enabled", NO)
 LG_FLOAT_PREF_FUNC(LGAppIconCornerRadius, "AppIcons.CornerRadius", 13.5)
@@ -64,6 +67,7 @@ static void removeAppIconOverlays(UIView *view) {
     } else {
         view.transform = CGAffineTransformIdentity;
     }
+    LGRemoveLiveBackdropCaptureView(host, kAppIconBackdropViewKey);
 }
 
 static void ensureAppIconTintOverlay(UIView *view) {
@@ -98,7 +102,7 @@ static void injectIntoAppIcon(UIView *view) {
     LiquidGlassView *glass = objc_getAssociatedObject(host, kAppIconGlassKey);
     CGPoint wallpaperOrigin = CGPointZero;
     UIImage *wallpaper = LG_getHomescreenSnapshot(&wallpaperOrigin);
-    if (!wallpaper) {
+    if (!wallpaper && !LG_prefersLiveCapture(@"AppIcons.RenderingMode")) {
         if ([objc_getAssociatedObject(host, kAppIconRetryKey) boolValue]) return;
         objc_setAssociatedObject(host, kAppIconRetryKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)),
@@ -142,7 +146,15 @@ static void injectIntoAppIcon(UIView *view) {
     glass.specularOpacity = LGAppIconSpecularOpacity();
     glass.blur = LGAppIconBlur();
     glass.wallpaperScale = LGAppIconWallpaperScale();
-    [glass updateOrigin];
+    if (!LGApplyRenderingModeToGlassHost(host,
+                                         glass,
+                                         @"AppIcons.RenderingMode",
+                                         kAppIconBackdropViewKey,
+                                         wallpaper,
+                                         wallpaperOrigin)) {
+        objc_setAssociatedObject(host, kAppIconRetryKey, nil, OBJC_ASSOCIATION_ASSIGN);
+        return;
+    }
     objc_setAssociatedObject(host, kAppIconLastGlassFrameKey,
                              [NSValue valueWithCGRect:frame],
                              OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -151,6 +163,15 @@ static void injectIntoAppIcon(UIView *view) {
         if (view.window) ensureAppIconTintOverlay(view);
     });
     objc_setAssociatedObject(host, kAppIconRetryKey, nil, OBJC_ASSOCIATION_ASSIGN);
+}
+
+static void LGAppIconsRefreshAllHosts(void) {
+    UIWindow *window = LG_getHomescreenWindow();
+    if (!window) return;
+    LGTraverseViews(window, ^(UIView *view) {
+        if (!LGIsHomescreenIconImageView(view)) return;
+        injectIntoAppIcon(view);
+    });
 }
 
 %hook SBIconImageView
@@ -213,12 +234,14 @@ static void injectIntoAppIcon(UIView *view) {
 
 - (void)setContentOffset:(CGPoint)offset {
     %orig;
-    LG_updateRegisteredGlassViews(LGUpdateGroupAppIcons);
+    if (LG_prefersLiveCapture(@"AppIcons.RenderingMode")) LGAppIconsRefreshAllHosts();
+    else LG_updateRegisteredGlassViews(LGUpdateGroupAppIcons);
 }
 
 - (void)setContentOffset:(CGPoint)offset animated:(BOOL)animated {
     %orig;
-    LG_updateRegisteredGlassViews(LGUpdateGroupAppIcons);
+    if (LG_prefersLiveCapture(@"AppIcons.RenderingMode")) LGAppIconsRefreshAllHosts();
+    else LG_updateRegisteredGlassViews(LGUpdateGroupAppIcons);
 }
 
 %end

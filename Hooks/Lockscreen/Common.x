@@ -1,11 +1,13 @@
 #import "Common.h"
 #import "../../Shared/LGHookSupport.h"
+#import "../../Shared/LGBannerCaptureSupport.h"
 #import "../../Shared/LGPrefAccessors.h"
 #import <objc/runtime.h>
 
 static UIImage *sCachedLockSnapshot = nil;
 static void *kLockAttachedKey = &kLockAttachedKey;
 static void *kLockTintKey = &kLockTintKey;
+static void *kLockBackdropViewKey = &kLockBackdropViewKey;
 
 static CADisplayLink *sLockLink = nil;
 static id sLockTicker = nil;
@@ -15,6 +17,8 @@ static UIView *LGLockscreenHostContainer(UIView *host) {
     if (![host isKindOfClass:[UIVisualEffectView class]]) return host;
     return ((UIVisualEffectView *)host).contentView;
 }
+
+BOOL LGIsLockscreenQuickActionsHost(UIView *view);
 
 BOOL LGLockscreenEnabled(void) { return LG_globalEnabled() && LG_prefBool(@"Lockscreen.Enabled", YES); }
 CGFloat LGLockscreenCornerRadius(void) { return LG_prefFloat(@"Lockscreen.CornerRadius", 18.5); }
@@ -54,7 +58,12 @@ static void LGEnsureLockscreenTintOverlay(UIView *host,
 static void LGStartLockDisplayLink(void) {
     if (!LGLockscreenEnabled()) return;
     LGStartDisplayLink(&sLockLink, &sLockTicker, LGPreferredFramesPerSecondForKey(@"Lockscreen.FPS", 30), ^{
-        LG_updateRegisteredGlassViews(LGUpdateGroupLockscreen);
+        if (LG_prefersLiveCapture(@"Lockscreen.RenderingMode") ||
+            LG_prefersLiveCapture(@"LockscreenQuickActions.RenderingMode")) {
+            LGLockscreenRefreshAllHosts();
+        } else {
+            LG_updateRegisteredGlassViews(LGUpdateGroupLockscreen);
+        }
     });
 }
 
@@ -97,6 +106,7 @@ void LGRemoveLockscreenGlass(UIView *host) {
     UIView *container = LGLockscreenHostContainer(host);
     if (!container) return;
     LGRemoveAssociatedSubview(container, kLockTintKey);
+    LGRemoveLiveBackdropCaptureView(container, kLockBackdropViewKey);
     for (UIView *sub in [container.subviews copy]) {
         if ([sub isKindOfClass:[LiquidGlassView class]]) [sub removeFromSuperview];
     }
@@ -182,8 +192,34 @@ void LGLockscreenInjectGlassWithSettings(UIView *host,
                                          CGFloat wallpaperScale,
                                          CGFloat lightTintAlpha,
                                          CGFloat darkTintAlpha) {
+    LGLockscreenInjectGlassWithSettingsAndMode(host,
+                                               @"Lockscreen.RenderingMode",
+                                               cornerRadius,
+                                               bezelWidth,
+                                               glassThickness,
+                                               refractionScale,
+                                               refractiveIndex,
+                                               specularOpacity,
+                                               blur,
+                                               wallpaperScale,
+                                               lightTintAlpha,
+                                               darkTintAlpha);
+}
+
+void LGLockscreenInjectGlassWithSettingsAndMode(UIView *host,
+                                                NSString *renderingModeKey,
+                                                CGFloat cornerRadius,
+                                                CGFloat bezelWidth,
+                                                CGFloat glassThickness,
+                                                CGFloat refractionScale,
+                                                CGFloat refractiveIndex,
+                                                CGFloat specularOpacity,
+                                                CGFloat blur,
+                                                CGFloat wallpaperScale,
+                                                CGFloat lightTintAlpha,
+                                                CGFloat darkTintAlpha) {
     UIImage *wallpaper = LGGetLockscreenSnapshotCached();
-    if (!wallpaper)
+    if (!wallpaper && !LG_prefersLiveCapture(renderingModeKey))
         return;
     CGPoint wallpaperOrigin = LG_getLockscreenWallpaperOrigin();
     LGLockscreenInjectGlassWithImageAndSettings(host,
@@ -239,8 +275,18 @@ void LGLockscreenInjectGlassWithImageAndSettings(UIView *host,
                                                                darkTintAlpha);
     if (!glass) return;
 
-    glass.wallpaperImage = wallpaper;
-    [glass updateOrigin];
+    UIView *container = LGLockscreenHostContainer(host);
+    NSString *resolvedRenderingModeKey = LGIsLockscreenQuickActionsHost(host)
+        ? @"LockscreenQuickActions.RenderingMode"
+        : @"Lockscreen.RenderingMode";
+    if (!LGApplyRenderingModeToGlassHost(container ?: host,
+                                         glass,
+                                         resolvedRenderingModeKey,
+                                         kLockBackdropViewKey,
+                                         wallpaper,
+                                         wallpaperOrigin)) {
+        return;
+    }
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.6 * NSEC_PER_SEC)),
                    dispatch_get_main_queue(), ^{ [glass updateOrigin]; });
 }

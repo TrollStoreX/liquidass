@@ -48,17 +48,18 @@ static void LGLockscreenQuickActionsApplyIfNeeded(UIView *view) {
         return;
     }
 
-    LGLockscreenInjectGlassWithSettings(view,
-                                        LGLockscreenQuickActionsCornerRadius(view),
-                                        LGLockscreenQuickActionsBezelWidth(),
-                                        LGLockscreenQuickActionsGlassThickness(),
-                                        LGLockscreenQuickActionsRefractionScale(),
-                                        LGLockscreenQuickActionsRefractiveIndex(),
-                                        LGLockscreenQuickActionsSpecularOpacity(),
-                                        LGLockscreenQuickActionsBlur(),
-                                        LGLockscreenQuickActionsWallpaperScale(),
-                                        LGLockscreenQuickActionsLightTintAlpha(),
-                                        LGLockscreenQuickActionsDarkTintAlpha());
+    LGLockscreenInjectGlassWithSettingsAndMode(view,
+                                               @"LockscreenQuickActions.RenderingMode",
+                                               LGLockscreenQuickActionsCornerRadius(view),
+                                               LGLockscreenQuickActionsBezelWidth(),
+                                               LGLockscreenQuickActionsGlassThickness(),
+                                               LGLockscreenQuickActionsRefractionScale(),
+                                               LGLockscreenQuickActionsRefractiveIndex(),
+                                               LGLockscreenQuickActionsSpecularOpacity(),
+                                               LGLockscreenQuickActionsBlur(),
+                                               LGLockscreenQuickActionsWallpaperScale(),
+                                               LGLockscreenQuickActionsLightTintAlpha(),
+                                               LGLockscreenQuickActionsDarkTintAlpha());
     LGAttachLockHostIfNeeded(view);
 }
 

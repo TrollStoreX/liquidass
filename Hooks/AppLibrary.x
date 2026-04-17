@@ -1,5 +1,6 @@
 #import "../LiquidGlass.h"
 #import "../Shared/LGHookSupport.h"
+#import "../Shared/LGBannerCaptureSupport.h"
 #import "../Shared/LGPrefAccessors.h"
 #import <objc/runtime.h>
 
@@ -24,6 +25,8 @@ static void *kAppLibOriginalClipsKey = &kAppLibOriginalClipsKey;
 static void *kAppLibGlassKey = &kAppLibGlassKey;
 static void *kAppLibTintKey = &kAppLibTintKey;
 static void *kAppLibFocusResanitizePendingKey = &kAppLibFocusResanitizePendingKey;
+static void *kAppLibBackdropViewKey = &kAppLibBackdropViewKey;
+static void *kAppLibSearchBackdropViewKey = &kAppLibSearchBackdropViewKey;
 LG_ENABLED_BOOL_PREF_FUNC(LGAppLibraryEnabled, "AppLibrary.Enabled", YES)
 LG_BOOL_PREF_FUNC(LGAppLibraryUseIconSnapshot, "AppLibrary.CompositeSnapshot", NO)
 LG_FLOAT_PREF_FUNC(LGAppLibCornerRadius, "AppLibrary.CornerRadius", 20.2)
@@ -160,7 +163,12 @@ static void LGScheduleFocusResanitize(UIView *view) {
 static void startAppLibDisplayLink(void) {
     if (!LGAnyAppLibraryGlassEnabled()) return;
     LGStartDisplayLink(&sAppLibLink, &sAppLibTicker, LGPreferredFramesPerSecondForKey(@"AppLibrary.FPS", 30), ^{
-        LG_updateRegisteredGlassViews(LGUpdateGroupAppLibrary);
+        if (LG_prefersLiveCapture(@"AppLibrary.RenderingMode") ||
+            LG_prefersLiveCapture(@"AppLibrary.Search.RenderingMode")) {
+            LGAppLibraryRefreshAllHosts();
+        } else {
+            LG_updateRegisteredGlassViews(LGUpdateGroupAppLibrary);
+        }
     });
 }
 static void stopAppLibDisplayLink(void) {
@@ -195,6 +203,8 @@ static void LGRemoveAppLibraryGlass(UIView *view) {
     LiquidGlassView *glass = objc_getAssociatedObject(view, kAppLibGlassKey);
     if (glass) [glass removeFromSuperview];
     objc_setAssociatedObject(view, kAppLibGlassKey, nil, OBJC_ASSOCIATION_ASSIGN);
+    LGRemoveLiveBackdropCaptureView(view, kAppLibBackdropViewKey);
+    LGRemoveLiveBackdropCaptureView(view, kAppLibSearchBackdropViewKey);
 }
 
 static UIColor *LGAppLibraryTintColorForView(UIView *view, CGFloat lightAlpha, CGFloat darkAlpha) {
@@ -300,7 +310,7 @@ static void injectIntoAppLibrary(UIView *self_) {
 
     CGPoint wallpaperOrigin = CGPointZero;
     UIImage *snapshot = LGAppLibraryCompositeSnapshot();
-    if (!snapshot) {
+    if (!snapshot && !LG_prefersLiveCapture(@"AppLibrary.RenderingMode")) {
         LGAppLibraryRestoreOriginalState(host);
         LGAppLibraryScheduleRetry(host, ^{
             injectIntoAppLibrary(self_);
@@ -338,7 +348,17 @@ static void injectIntoAppLibrary(UIView *self_) {
                                                                LGAppLibLightTintAlpha(),
                                                                LGAppLibDarkTintAlpha()));
     objc_setAssociatedObject(host, kAppLibRetryKey, nil, OBJC_ASSOCIATION_ASSIGN);
-    [glass updateOrigin];
+    if (!LGApplyRenderingModeToGlassHost(host,
+                                         glass,
+                                         @"AppLibrary.RenderingMode",
+                                         kAppLibBackdropViewKey,
+                                         snapshot,
+                                         wallpaperOrigin)) {
+        LGAppLibraryScheduleRetry(host, ^{
+            injectIntoAppLibrary(self_);
+        });
+        return;
+    }
 }
 
 static void injectIntoSearchBar(UIView *self_) {
@@ -351,7 +371,7 @@ static void injectIntoSearchBar(UIView *self_) {
 
     CGPoint wallpaperOrigin = CGPointZero;
     UIImage *snapshot = LGAppLibraryCompositeSnapshot();
-    if (!snapshot) {
+    if (!snapshot && !LG_prefersLiveCapture(@"AppLibrary.Search.RenderingMode")) {
         LGAppLibraryRestoreOriginalState(self_);
         LGAppLibraryScheduleRetry(self_, ^{
             injectIntoSearchBar(self_);
@@ -388,7 +408,17 @@ static void injectIntoSearchBar(UIView *self_) {
                                                                LGAppLibSearchLightTintAlpha(),
                                                                LGAppLibSearchDarkTintAlpha()));
     objc_setAssociatedObject(self_, kAppLibRetryKey, nil, OBJC_ASSOCIATION_ASSIGN);
-    [glass updateOrigin];
+    if (!LGApplyRenderingModeToGlassHost(self_,
+                                         glass,
+                                         @"AppLibrary.Search.RenderingMode",
+                                         kAppLibSearchBackdropViewKey,
+                                         snapshot,
+                                         wallpaperOrigin)) {
+        LGAppLibraryScheduleRetry(self_, ^{
+            injectIntoSearchBar(self_);
+        });
+        return;
+    }
 }
 
 static void LGAppLibraryRefreshAllHosts(void) {

@@ -26,6 +26,8 @@ NSString * const LGBannerContentViewClassName = @"BNContentViewControllerView";
 NSString * const LGBannerControllerClassName = @"BNContentViewController";
 NSString * const LGBannerPresentableControllerClassName = @"SBNotificationPresentableViewController";
 NSString * const LGAppLibrarySidebarMarkerClassName = @"_SBHLibraryFrozenSafeAreaInsetsView";
+NSString * const LGRenderingModeSnapshot = @"snapshot";
+NSString * const LGRenderingModeLiveCapture = @"live_capture";
 static NSString * const LGPrefsDidReloadInProcessNotification = @"dylv.liquidassprefs.InProcessReload";
 
 static NSDictionary<NSString *, id> *sLGCachedPreferences = nil;
@@ -232,8 +234,18 @@ NSInteger LG_prefInteger(NSString *key, NSInteger fallback) {
     return fallback;
 }
 
+NSString *LG_prefString(NSString *key, NSString *fallback) {
+    id value = LGPreferenceValue(key);
+    if ([value isKindOfClass:[NSString class]] && [value length] > 0) return value;
+    return fallback;
+}
+
 BOOL LG_globalEnabled(void) {
     return LG_prefBool(@"Global.Enabled", NO);
+}
+
+BOOL LG_prefersLiveCapture(NSString *key) {
+    return [LG_prefString(key, LGRenderingModeSnapshot) isEqualToString:LGRenderingModeLiveCapture];
 }
 
 void LGLog(NSString *format, ...) {

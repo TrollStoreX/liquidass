@@ -44,6 +44,11 @@
         _screenSubtitle = [LGLocalized(@"prefs.misc.about.subtitle") copy];
         _accentColor = [UIColor systemGrayColor];
         _items = [LGMoreOptionsItems() copy];
+    } else if ([_screenIdentifier isEqualToString:@"Experimental"]) {
+        _screenTitle = [LGLocalized(@"prefs.misc.experimental.title") copy];
+        _screenSubtitle = [LGLocalized(@"prefs.misc.experimental.page_subtitle") copy];
+        _accentColor = [UIColor systemOrangeColor];
+        _items = [LGExperimentalItems() copy];
     }
     self.title = _screenTitle;
 }
@@ -136,6 +141,15 @@
 - (void)handleLaterPressed {
     LGSetRespringBarDismissed(YES);
     [self updateRespringBarAnimated:YES];
+}
+
+- (void)openExperimental {
+    LGPSurfaceController *controller = [[LGPSurfaceController alloc] initWithTitle:LGLocalized(@"prefs.misc.experimental.title")
+                                                                          subtitle:LGLocalized(@"prefs.misc.experimental.page_subtitle")
+                                                                         tintColor:[UIColor systemOrangeColor]
+                                                                        identifier:@"Experimental"
+                                                                             items:LGExperimentalItems()];
+    [self.navigationController pushViewController:controller animated:YES];
 }
 
 - (void)dealloc {
@@ -747,7 +761,14 @@
     if ([key isEqualToString:kLGPrefsLanguageKey]) {
         currentValue = LGCurrentPrefsLanguageCode();
     } else {
-        currentValue = [LGReadPreference(key, item[@"default"]) stringValue];
+        id storedValue = LGReadPreferenceObject(key, item[@"default"]);
+        if ([storedValue isKindOfClass:[NSString class]]) {
+            currentValue = storedValue;
+        } else if ([storedValue respondsToSelector:@selector(stringValue)]) {
+            currentValue = [storedValue stringValue];
+        } else {
+            currentValue = [[storedValue description] copy];
+        }
     }
     for (NSDictionary *choice in item[@"choices"]) {
         if ([choice[@"value"] isEqual:currentValue]) {
@@ -760,6 +781,53 @@
         }
     }
     return @"";
+}
+
+- (UIMenu *)menuForItem:(NSDictionary *)item
+           currentValue:(NSString *)currentValue
+             menuButton:(UIButton *)menuButton
+            titleUpdate:(void (^)(NSString *newTitle))applyMenuSelectionTitle {
+    __weak typeof(self) weakSelf = self;
+    __weak UIButton *weakMenuButton = menuButton;
+    __block NSString *selectedValue = [currentValue copy];
+    NSMutableArray<UIMenuElement *> *actions = [NSMutableArray array];
+    for (NSDictionary *choice in item[@"choices"]) {
+        NSString *value = choice[@"value"];
+        NSString *title = choice[@"title"];
+        if (!value.length || !title.length) continue;
+        UIAction *action = [UIAction actionWithTitle:title
+                                               image:nil
+                                          identifier:nil
+                                             handler:^(__kindof UIAction * _Nonnull actionObj) {
+            (void)actionObj;
+            if ([item[@"key"] isEqualToString:kLGPrefsLanguageKey]) {
+                LGSetCurrentPrefsLanguageCode(value);
+                selectedValue = [LGCurrentPrefsLanguageCode() copy];
+            } else {
+                LGWritePreferenceObject(item[@"key"], value);
+                selectedValue = [value copy];
+                if (LGPreferenceRequiresRespring(item[@"key"])) {
+                    LGSetRespringBarDismissed(NO);
+                    LGSetNeedsRespring(YES);
+                }
+            }
+            applyMenuSelectionTitle(title);
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            UIButton *strongMenuButton = weakMenuButton;
+            if (strongSelf && strongMenuButton) {
+                strongMenuButton.menu = [strongSelf menuForItem:item
+                                                   currentValue:selectedValue
+                                                     menuButton:strongMenuButton
+                                                    titleUpdate:applyMenuSelectionTitle];
+                [strongSelf updateRespringBarAnimated:YES];
+            }
+        }];
+        if ([action respondsToSelector:@selector(setState:)]) {
+            action.state = [value isEqualToString:selectedValue] ? UIMenuElementStateOn : UIMenuElementStateOff;
+        }
+        [actions addObject:action];
+    }
+    return [UIMenu menuWithTitle:@"" children:actions];
 }
 
 - (UIView *)menuControlBodyForItem:(NSDictionary *)item titleLabel:(UILabel *)titleLabel {
@@ -780,9 +848,9 @@
     menuButton.layer.cornerRadius = 0.0;
 
     NSString *selectedTitle = [self menuSelectionTitleForItem:item];
-    NSString *currentValue = [item[@"key"] isEqualToString:kLGPrefsLanguageKey]
+    __block NSString *currentValue = [item[@"key"] isEqualToString:kLGPrefsLanguageKey]
         ? LGCurrentPrefsLanguageCode()
-        : [[LGReadPreference(item[@"key"], item[@"default"]) description] copy];
+        : [[LGReadPreferenceObject(item[@"key"], item[@"default"]) description] copy];
     if (@available(iOS 15.0, *)) {
         UIButtonConfiguration *config = [UIButtonConfiguration plainButtonConfiguration];
         config.title = selectedTitle;
@@ -800,26 +868,32 @@
         menuButton.imageEdgeInsets = UIEdgeInsetsMake(0.0, 6.0, 0.0, -6.0);
     }
 
-    NSMutableArray<UIMenuElement *> *actions = [NSMutableArray array];
-    for (NSDictionary *choice in item[@"choices"]) {
-        NSString *value = choice[@"value"];
-        NSString *title = choice[@"title"];
-        if (!value.length || !title.length) continue;
-        UIAction *action = [UIAction actionWithTitle:title
-                                               image:nil
-                                          identifier:nil
-                                             handler:^(__kindof UIAction * _Nonnull actionObj) {
-            (void)actionObj;
-            if ([item[@"key"] isEqualToString:kLGPrefsLanguageKey]) {
-                LGSetCurrentPrefsLanguageCode(value);
-            }
-        }];
-        if ([action respondsToSelector:@selector(setState:)]) {
-            action.state = [value isEqualToString:currentValue] ? UIMenuElementStateOn : UIMenuElementStateOff;
+    __weak typeof(self) weakSelf = self;
+    __weak UIButton *weakMenuButton = menuButton;
+    void (^applyMenuSelectionTitle)(NSString *) = ^(NSString *newTitle) {
+        if (!newTitle.length) return;
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        UIButton *strongMenuButton = weakMenuButton;
+        if (!strongSelf || !strongMenuButton) return;
+        if (@available(iOS 15.0, *)) {
+            UIButtonConfiguration *updatedConfig = strongMenuButton.configuration ?: [UIButtonConfiguration plainButtonConfiguration];
+            updatedConfig.title = newTitle;
+            updatedConfig.image = [UIImage systemImageNamed:@"chevron.down"];
+            updatedConfig.imagePlacement = NSDirectionalRectEdgeTrailing;
+            updatedConfig.imagePadding = 6.0;
+            updatedConfig.baseForegroundColor = strongSelf->_accentColor;
+            updatedConfig.background.backgroundColor = UIColor.clearColor;
+            updatedConfig.contentInsets = NSDirectionalEdgeInsetsMake(4.0, 8.0, 4.0, 8.0);
+            strongMenuButton.configuration = updatedConfig;
+        } else {
+            [strongMenuButton setTitle:newTitle forState:UIControlStateNormal];
         }
-        [actions addObject:action];
-    }
-    menuButton.menu = [UIMenu menuWithTitle:@"" children:actions];
+    };
+
+    menuButton.menu = [self menuForItem:item
+                           currentValue:currentValue
+                             menuButton:menuButton
+                            titleUpdate:applyMenuSelectionTitle];
 
     UIView *headerRow = [self controlHeaderRowWithTitleLabel:titleLabel
                                               accessoryViews:@[menuButton]

@@ -1,5 +1,6 @@
 #import "../LiquidGlass.h"
 #import "../Shared/LGHookSupport.h"
+#import "../Shared/LGBannerCaptureSupport.h"
 #import "../Shared/LGPrefAccessors.h"
 #import <objc/runtime.h>
 
@@ -13,6 +14,7 @@ static void *kWidgetOriginalAlphaKey = &kWidgetOriginalAlphaKey;
 static void *kWidgetOriginalCornerRadiusKey = &kWidgetOriginalCornerRadiusKey;
 static void *kWidgetOriginalClipsKey = &kWidgetOriginalClipsKey;
 static void *kWidgetOriginalCornerCurveKey = &kWidgetOriginalCornerCurveKey;
+static void *kWidgetBackdropViewKey = &kWidgetBackdropViewKey;
 
 static CADisplayLink *sWidgetLink = nil;
 static id sWidgetTicker = nil;
@@ -50,7 +52,8 @@ static BOOL LGViewBelongsToWidgetStack(UIView *view) {
 
 static void LGStartWidgetDisplayLink(void) {
     LGStartDisplayLink(&sWidgetLink, &sWidgetTicker, LGPreferredFramesPerSecondForKey(@"Homescreen.FPS", 30), ^{
-        LG_updateRegisteredGlassViews(LGUpdateGroupWidgets);
+        if (LG_prefersLiveCapture(@"Widgets.RenderingMode")) LGWidgetsRefreshAllHosts();
+        else LG_updateRegisteredGlassViews(LGUpdateGroupWidgets);
     });
 }
 
@@ -67,6 +70,7 @@ static void removeWidgetOverlays(UIView *view) {
     LiquidGlassView *glass = objc_getAssociatedObject(view, kWidgetGlassKey);
     if (glass) [glass removeFromSuperview];
     objc_setAssociatedObject(view, kWidgetGlassKey, nil, OBJC_ASSOCIATION_ASSIGN);
+    LGRemoveLiveBackdropCaptureView(view, kWidgetBackdropViewKey);
 }
 
 static void LGRememberWidgetOriginalState(UIView *view) {
@@ -146,7 +150,7 @@ static void LGInjectIntoWidgetMaterialView(UIView *view) {
 
     CGPoint wallpaperOrigin = CGPointZero;
     UIImage *wallpaper = LG_getWallpaperImage(&wallpaperOrigin);
-    if (!wallpaper) {
+    if (!wallpaper && !LG_prefersLiveCapture(@"Widgets.RenderingMode")) {
         removeWidgetOverlays(view);
         LGRestoreWidgetOriginalState(view);
         return;
@@ -180,7 +184,16 @@ static void LGInjectIntoWidgetMaterialView(UIView *view) {
     glass.specularOpacity = LGWidgetSpecularOpacity();
     glass.blur = LGWidgetBlur();
     glass.wallpaperScale = LGWidgetWallpaperScale();
-    [glass updateOrigin];
+    if (!LGApplyRenderingModeToGlassHost(view,
+                                         glass,
+                                         @"Widgets.RenderingMode",
+                                         kWidgetBackdropViewKey,
+                                         wallpaper,
+                                         wallpaperOrigin)) {
+        removeWidgetOverlays(view);
+        LGRestoreWidgetOriginalState(view);
+        return;
+    }
     ensureWidgetTintOverlay(view);
     dispatch_async(dispatch_get_main_queue(), ^{
         if (view.window) ensureWidgetTintOverlay(view);

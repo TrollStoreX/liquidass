@@ -1,5 +1,6 @@
 #import "../LiquidGlass.h"
 #import "../Shared/LGHookSupport.h"
+#import "../Shared/LGBannerCaptureSupport.h"
 #import "../Shared/LGPrefAccessors.h"
 #import <objc/runtime.h>
 
@@ -9,6 +10,7 @@ static const NSInteger kContextMenuDividerTag   = 0xD171;
 static void *kContextMenuReusableOriginalBackgroundKey = &kContextMenuReusableOriginalBackgroundKey;
 static void *kContextMenuOriginalCornerRadiusKey = &kContextMenuOriginalCornerRadiusKey;
 static void *kContextMenuOriginalCornerCurveKey = &kContextMenuOriginalCornerCurveKey;
+static void *kContextMenuBackdropViewKey = &kContextMenuBackdropViewKey;
 
 static BOOL LGContextMenuColorIsEffectivelyTransparent(UIColor *color) {
     if (!color) return YES;
@@ -41,7 +43,8 @@ static void *kContextMenuBackdropAlphaKey = &kContextMenuBackdropAlphaKey;
 
 static void startContextMenuLink(void) {
     LGStartDisplayLink(&sCtxLink, &sCtxTicker, LGPreferredFramesPerSecondForKey(@"Homescreen.FPS", 30), ^{
-        LG_updateRegisteredGlassViews(LGUpdateGroupContextMenu);
+        if (LG_prefersLiveCapture(@"ContextMenu.RenderingMode")) LGContextMenuRefreshAllHosts();
+        else LG_updateRegisteredGlassViews(LGUpdateGroupContextMenu);
     });
 }
 
@@ -336,6 +339,7 @@ static void setBackdropHiddenInEffectView(UIView *effectView, BOOL hidden) {
 
 static void injectGlassIntoEffectView(UIVisualEffectView *fxView, int attempt) {
     UIView *container = fxView.contentView;
+    LGRemoveLiveBackdropCaptureView(container, kContextMenuBackdropViewKey);
 
     for (NSInteger i = container.subviews.count - 1; i >= 0; i--) {
         UIView *sub = container.subviews[i];
@@ -356,7 +360,7 @@ static void injectGlassIntoEffectView(UIVisualEffectView *fxView, int attempt) {
     }
 
     UIImage *wallpaper = LG_getCachedContextMenuSnapshot();
-    if (!wallpaper) return;
+    if (!wallpaper && !LG_prefersLiveCapture(@"ContextMenu.RenderingMode")) return;
 
     LiquidGlassView *glass = [[LiquidGlassView alloc]
         initWithFrame:container.bounds wallpaper:wallpaper wallpaperOrigin:CGPointZero];
@@ -373,7 +377,15 @@ static void injectGlassIntoEffectView(UIVisualEffectView *fxView, int attempt) {
     glass.wallpaperScale  = LGContextMenuWallpaperScale();
     glass.updateGroup     = LGUpdateGroupContextMenu;
     [container insertSubview:glass atIndex:0];
-    [glass updateOrigin];
+    if (!LGApplyRenderingModeToGlassHost(container,
+                                         glass,
+                                         @"ContextMenu.RenderingMode",
+                                         kContextMenuBackdropViewKey,
+                                         wallpaper,
+                                         CGPointZero)) {
+        [glass removeFromSuperview];
+        return;
+    }
 
     UIView *tint = [[UIView alloc] initWithFrame:container.bounds];
     tint.tag                    = kContextMenuTintTag;

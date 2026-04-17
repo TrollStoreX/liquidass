@@ -223,27 +223,17 @@ static void LGInjectBannerPlatterGlass(UIView *host) {
                                                                LG_prefFloat(@"Banner.LightTintAlpha", LGBannerDefaultLightTintAlpha),
                                                                LG_prefFloat(@"Banner.DarkTintAlpha", LGBannerDefaultDarkTintAlpha));
     if (!glass) return;
-
-    CGPoint captureOrigin = CGPointZero;
-    CGSize samplingResolution = CGSizeZero;
-    if (!LGCaptureLiveBackdropTextureForHost(host, glass, kBannerBackdropViewKey, &captureOrigin, &samplingResolution)) {
-        LGRemoveLiveBackdropCaptureView(host, kBannerBackdropViewKey);
-        CGPoint fallbackOrigin = CGPointZero;
-        UIImage *fallbackSnapshot = LG_getHomescreenSnapshot(&fallbackOrigin);
-        if (fallbackSnapshot) {
-            glass.wallpaperImage = fallbackSnapshot;
-            glass.wallpaperOrigin = fallbackOrigin;
-            glass.wallpaperSamplingResolution = CGSizeZero;
-            [glass updateOrigin];
-            return;
-        }
+    CGPoint fallbackOrigin = CGPointZero;
+    UIImage *fallbackSnapshot = LG_getHomescreenSnapshot(&fallbackOrigin);
+    if (!LGApplyRenderingModeToGlassHost(host,
+                                         glass,
+                                         @"Banner.RenderingMode",
+                                         kBannerBackdropViewKey,
+                                         fallbackSnapshot,
+                                         fallbackOrigin)) {
         LGCleanupLockscreenHost(host);
         return;
     }
-
-    glass.wallpaperOrigin = captureOrigin;
-    glass.wallpaperSamplingResolution = samplingResolution;
-    [glass updateOrigin];
 }
 
 void LGRefreshBannerPlatterHosts(void) {
@@ -414,17 +404,18 @@ void LGLockscreenRefreshAllHosts(void) {
             if (LGIsLockscreenQuickActionsHost(view)) {
                 if (LG_prefBool(@"LockscreenQuickActions.Enabled", YES)) {
                     CGFloat cornerRadius = LGLockscreenQuickActionsCornerRadius(view);
-                    LGLockscreenInjectGlassWithSettings(view,
-                                                        cornerRadius,
-                                                        LG_prefFloat(@"LockscreenQuickActions.BezelWidth", 12.0),
-                                                        LG_prefFloat(@"LockscreenQuickActions.GlassThickness", 80.0),
-                                                        LG_prefFloat(@"LockscreenQuickActions.RefractionScale", 1.2),
-                                                        LG_prefFloat(@"LockscreenQuickActions.RefractiveIndex", 1.0),
-                                                        LG_prefFloat(@"LockscreenQuickActions.SpecularOpacity", 0.8),
-                                                        LG_prefFloat(@"LockscreenQuickActions.Blur", 8.0),
-                                                        LG_prefFloat(@"LockscreenQuickActions.WallpaperScale", 0.5),
-                                                        LG_prefFloat(@"LockscreenQuickActions.LightTintAlpha", 0.1),
-                                                        LG_prefFloat(@"LockscreenQuickActions.DarkTintAlpha", 0.6));
+                    LGLockscreenInjectGlassWithSettingsAndMode(view,
+                                                               @"LockscreenQuickActions.RenderingMode",
+                                                               cornerRadius,
+                                                               LG_prefFloat(@"LockscreenQuickActions.BezelWidth", 12.0),
+                                                               LG_prefFloat(@"LockscreenQuickActions.GlassThickness", 80.0),
+                                                               LG_prefFloat(@"LockscreenQuickActions.RefractionScale", 1.2),
+                                                               LG_prefFloat(@"LockscreenQuickActions.RefractiveIndex", 1.0),
+                                                               LG_prefFloat(@"LockscreenQuickActions.SpecularOpacity", 0.8),
+                                                               LG_prefFloat(@"LockscreenQuickActions.Blur", 8.0),
+                                                               LG_prefFloat(@"LockscreenQuickActions.WallpaperScale", 0.5),
+                                                               LG_prefFloat(@"LockscreenQuickActions.LightTintAlpha", 0.1),
+                                                               LG_prefFloat(@"LockscreenQuickActions.DarkTintAlpha", 0.6));
                     LGAttachLockHostIfNeeded(view);
                 } else {
                     LGCleanupLockscreenHost(view);

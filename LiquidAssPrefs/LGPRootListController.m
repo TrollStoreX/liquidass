@@ -83,6 +83,7 @@
         else if ([surface isEqualToString:@"Lockscreen"]) [self openLockscreen];
         else if ([surface isEqualToString:@"AppLibrary"]) [self openAppLibrary];
         else if ([surface isEqualToString:@"MoreOptions"]) [self openMoreOptions];
+        else if ([surface isEqualToString:@"Experimental"]) [self openMoreOptions];
     });
 }
 

@@ -1,5 +1,6 @@
 #import "../LiquidGlass.h"
 #import "../Shared/LGHookSupport.h"
+#import "../Shared/LGBannerCaptureSupport.h"
 #import "../Shared/LGPrefAccessors.h"
 #import <objc/runtime.h>
 
@@ -10,6 +11,7 @@ static void *kFolderOpenAttachedKey = &kFolderOpenAttachedKey;
 static void *kFolderOpenGlassKey = &kFolderOpenGlassKey;
 static void *kFolderOpenTintKey = &kFolderOpenTintKey;
 static void *kFolderOpenResanitizePendingKey = &kFolderOpenResanitizePendingKey;
+static void *kFolderOpenBackdropViewKey = &kFolderOpenBackdropViewKey;
 
 static BOOL isInsideOpenFolder(UIView *view) {
     static Class cls;
@@ -160,7 +162,8 @@ static id sFolderTicker = nil;
 static void startFolderDisplayLink(void) {
     sFolderStopGeneration++;
     LGStartDisplayLink(&sFolderLink, &sFolderTicker, LGPreferredFramesPerSecondForKey(@"Homescreen.FPS", 30), ^{
-        LG_updateRegisteredGlassViews(LGUpdateGroupFolderOpen);
+        if (LG_prefersLiveCapture(@"FolderOpen.RenderingMode")) LGFolderOpenRefreshAllHosts();
+        else LG_updateRegisteredGlassViews(LGUpdateGroupFolderOpen);
     });
 }
 
@@ -211,6 +214,7 @@ static void LGRestoreFolderOpenHost(UIView *view) {
     LiquidGlassView *glass = objc_getAssociatedObject(view, kFolderOpenGlassKey);
     if (glass) [glass removeFromSuperview];
     objc_setAssociatedObject(view, kFolderOpenGlassKey, nil, OBJC_ASSOCIATION_ASSIGN);
+    LGRemoveLiveBackdropCaptureView(view, kFolderOpenBackdropViewKey);
 
     NSNumber *originalAlpha = objc_getAssociatedObject(view, kFolderOpenOriginalAlphaKey);
     if (originalAlpha) view.alpha = [originalAlpha doubleValue];
@@ -240,7 +244,7 @@ static void injectIntoOpenFolder(UIView *host) {
         snapshot = LG_getStrictCachedContextMenuSnapshot();
         if (LG_imageLooksBlack(snapshot)) snapshot = nil;
     }
-    if (!snapshot) {
+    if (!snapshot && !LG_prefersLiveCapture(@"FolderOpen.RenderingMode")) {
         NSNumber *originalAlpha = objc_getAssociatedObject(host, kFolderOpenOriginalAlphaKey);
         if (originalAlpha) host.alpha = [originalAlpha doubleValue];
         return;
@@ -274,7 +278,14 @@ static void injectIntoOpenFolder(UIView *host) {
     LGStripFolderOpenMaterialFiltersIfNeeded(host);
     ensureFolderOpenTintOverlay(host);
     LGScheduleFolderOpenResanitize(host);
-    [glass updateOrigin];
+    if (!LGApplyRenderingModeToGlassHost(host,
+                                         glass,
+                                         @"FolderOpen.RenderingMode",
+                                         kFolderOpenBackdropViewKey,
+                                         snapshot,
+                                         CGPointZero)) {
+        return;
+    }
 
     if (![objc_getAssociatedObject(host, kFolderOpenAttachedKey) boolValue]) {
         objc_setAssociatedObject(host, kFolderOpenAttachedKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);

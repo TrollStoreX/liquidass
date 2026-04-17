@@ -123,3 +123,41 @@ BOOL LGCaptureLiveBackdropTextureForHost(UIView *host,
     }
     return YES;
 }
+
+BOOL LGApplyRenderingModeToGlassHost(UIView *host,
+                                     LiquidGlassView *glass,
+                                     NSString *renderingModeKey,
+                                     const void *associationKey,
+                                     UIImage *snapshot,
+                                     CGPoint snapshotOrigin) {
+    LGAssertMainThread();
+    if (!host || !glass || !renderingModeKey.length || !associationKey) return NO;
+
+    if (LG_prefersLiveCapture(renderingModeKey)) {
+        CGPoint captureOrigin = CGPointZero;
+        CGSize samplingResolution = CGSizeZero;
+        if (LGCaptureLiveBackdropTextureForHost(host,
+                                                glass,
+                                                associationKey,
+                                                &captureOrigin,
+                                                &samplingResolution)) {
+            glass.wallpaperOrigin = captureOrigin;
+            glass.wallpaperSamplingResolution = samplingResolution;
+            [glass updateOrigin];
+            return YES;
+        }
+        LGRemoveLiveBackdropCaptureView(host, associationKey);
+        if (!snapshot) {
+            return NO;
+        }
+    } else {
+        LGRemoveLiveBackdropCaptureView(host, associationKey);
+    }
+
+    if (!snapshot) return NO;
+    glass.wallpaperImage = snapshot;
+    glass.wallpaperOrigin = snapshotOrigin;
+    glass.wallpaperSamplingResolution = CGSizeZero;
+    [glass updateOrigin];
+    return YES;
+}

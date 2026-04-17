@@ -1,5 +1,6 @@
 #import "../LiquidGlass.h"
 #import "../Shared/LGHookSupport.h"
+#import "../Shared/LGBannerCaptureSupport.h"
 #import "../Shared/LGPrefAccessors.h"
 #import <objc/runtime.h>
 
@@ -9,6 +10,7 @@ static void *kSearchPillOriginalClipsKey = &kSearchPillOriginalClipsKey;
 static void *kSearchPillGlassKey = &kSearchPillGlassKey;
 static void *kSearchPillTintKey = &kSearchPillTintKey;
 static void *kSearchPillRetryKey = &kSearchPillRetryKey;
+static void *kSearchPillBackdropViewKey = &kSearchPillBackdropViewKey;
 static const NSInteger kSearchPillTintTag = 0x5EA2;
 
 static void LGSearchPillInject(UIView *host);
@@ -58,6 +60,7 @@ static void LGRemoveSearchPillGlass(UIView *view) {
     LiquidGlassView *glass = objc_getAssociatedObject(view, kSearchPillGlassKey);
     if (glass) [glass removeFromSuperview];
     objc_setAssociatedObject(view, kSearchPillGlassKey, nil, OBJC_ASSOCIATION_ASSIGN);
+    LGRemoveLiveBackdropCaptureView(view, kSearchPillBackdropViewKey);
 }
 
 static UIColor *LGSearchPillTintColorForView(UIView *view) {
@@ -111,7 +114,7 @@ static void LGSearchPillInject(UIView *host) {
     }
 
     UIImage *snapshot = LG_getHomescreenSnapshot(NULL);
-    if (!snapshot) {
+    if (!snapshot && !LG_prefersLiveCapture(@"SearchPill.RenderingMode")) {
         LG_refreshHomescreenSnapshot();
         LGSearchPillScheduleRetry(host);
         return;
@@ -142,7 +145,15 @@ static void LGSearchPillInject(UIView *host) {
     glass.updateGroup = LGUpdateGroupAppLibrary;
 
     LGSearchPillEnsureTintOverlay(host);
-    [glass updateOrigin];
+    if (!LGApplyRenderingModeToGlassHost(host,
+                                         glass,
+                                         @"SearchPill.RenderingMode",
+                                         kSearchPillBackdropViewKey,
+                                         snapshot,
+                                         CGPointZero)) {
+        LGSearchPillScheduleRetry(host);
+        return;
+    }
     objc_setAssociatedObject(host, kSearchPillRetryKey, nil, OBJC_ASSOCIATION_ASSIGN);
 }
 

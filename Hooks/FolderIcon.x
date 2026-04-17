@@ -1,5 +1,6 @@
 #import "../LiquidGlass.h"
 #import "../Shared/LGHookSupport.h"
+#import "../Shared/LGBannerCaptureSupport.h"
 #import "../Shared/LGPrefAccessors.h"
 #import <objc/runtime.h>
 
@@ -23,6 +24,7 @@ static void *kFolderIconRetryKey = &kFolderIconRetryKey;
 static void *kFolderIconGlassKey = &kFolderIconGlassKey;
 static void *kFolderIconTintKey = &kFolderIconTintKey;
 static void *kFolderIconLastPageKey = &kFolderIconLastPageKey;
+static void *kFolderIconBackdropViewKey = &kFolderIconBackdropViewKey;
 
 static void LGScheduleFolderSnapshotWarmup(NSTimeInterval delay) {
     if (LG_getFolderSnapshot()) return;
@@ -81,6 +83,7 @@ static void removeFolderIconOverlays(UIView *self_) {
     LiquidGlassView *glass = objc_getAssociatedObject(self_, kFolderIconGlassKey);
     if (glass) [glass removeFromSuperview];
     objc_setAssociatedObject(self_, kFolderIconGlassKey, nil, OBJC_ASSOCIATION_ASSIGN);
+    LGRemoveLiveBackdropCaptureView(self_, kFolderIconBackdropViewKey);
 }
 
 static void ensureFolderIconTintOverlay(UIView *self_) {
@@ -106,7 +109,7 @@ static void injectIntoFolderIcon(UIView *self_) {
 
     CGPoint wallpaperOrigin = CGPointZero;
     UIImage *wallpaper = LG_getHomescreenSnapshot(&wallpaperOrigin);
-    if (!wallpaper) {
+    if (!wallpaper && !LG_prefersLiveCapture(@"FolderIcon.RenderingMode")) {
         if ([objc_getAssociatedObject(self_, kFolderIconRetryKey) boolValue]) return;
         objc_setAssociatedObject(self_, kFolderIconRetryKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)),
@@ -142,7 +145,15 @@ static void injectIntoFolderIcon(UIView *self_) {
     glass.specularOpacity = LGFolderIconSpecularOpacity();
     glass.blur = LGFolderIconBlur();
     glass.wallpaperScale = LGFolderIconWallpaperScale();
-    [glass updateOrigin];
+    if (!LGApplyRenderingModeToGlassHost(self_,
+                                         glass,
+                                         @"FolderIcon.RenderingMode",
+                                         kFolderIconBackdropViewKey,
+                                         wallpaper,
+                                         wallpaperOrigin)) {
+        objc_setAssociatedObject(self_, kFolderIconRetryKey, nil, OBJC_ASSOCIATION_ASSIGN);
+        return;
+    }
     ensureFolderIconTintOverlay(self_);
     dispatch_async(dispatch_get_main_queue(), ^{
         if (self_.window) ensureFolderIconTintOverlay(self_);
@@ -177,7 +188,8 @@ static void LGHandleFolderSnapshotForScroll(UIScrollView *scrollView, CGPoint of
         LG_invalidateFolderSnapshot();
         LGScheduleFolderSnapshotWarmupForScroll(scrollView, 0.18);
     }
-    LG_updateRegisteredGlassViews(LGUpdateGroupFolderIcon);
+    if (LG_prefersLiveCapture(@"FolderIcon.RenderingMode")) LGFolderIconRefreshAllHosts();
+    else LG_updateRegisteredGlassViews(LGUpdateGroupFolderIcon);
 }
 
 static void LGFolderIconPrefsChanged(CFNotificationCenterRef center,

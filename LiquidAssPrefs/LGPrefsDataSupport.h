@@ -34,6 +34,8 @@ void LGSetNeedsRespring(BOOL needsRespring);
 NSNumber *LGReadPreference(NSString *key, NSNumber *fallback);
 void LGWritePreference(NSString *key, NSNumber *value);
 void LGWritePreferenceAndMaybeRequireRespring(NSString *key, NSNumber *value);
+id LGReadPreferenceObject(NSString *key, id fallback);
+void LGWritePreferenceObject(NSString *key, id value);
 void LGRemovePreference(NSString *key);
 
 NSDictionary *LGSwitchSetting(NSString *key, NSString *title, NSString *subtitle, BOOL fallback);
@@ -66,6 +68,7 @@ NSArray<NSDictionary *> *LGAppLibraryItems(void);
 NSArray<NSDictionary *> *LGWidgetItems(void);
 NSArray<NSDictionary *> *LGHomescreenItems(void);
 NSArray<NSDictionary *> *LGAllSurfaceItems(void);
+NSArray<NSDictionary *> *LGExperimentalItems(void);
 NSArray<NSDictionary *> *LGMoreOptionsItems(void);
 
 void LGResetAllPreferences(void);

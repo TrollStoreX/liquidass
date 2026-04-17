@@ -187,13 +187,22 @@ void LGSetNeedsRespring(BOOL needsRespring) {
 }
 
 NSNumber *LGReadPreference(NSString *key, NSNumber *fallback) {
-    CFPropertyListRef value = CFPreferencesCopyAppValue((__bridge CFStringRef)key,
-                                                        (__bridge CFStringRef)LGPrefsDomain);
-    id obj = CFBridgingRelease(value);
+    id obj = LGReadPreferenceObject(key, fallback);
     return [obj isKindOfClass:[NSNumber class]] ? obj : fallback;
 }
 
+id LGReadPreferenceObject(NSString *key, id fallback) {
+    CFPropertyListRef value = CFPreferencesCopyAppValue((__bridge CFStringRef)key,
+                                                        (__bridge CFStringRef)LGPrefsDomain);
+    id obj = CFBridgingRelease(value);
+    return obj ?: fallback;
+}
+
 void LGWritePreference(NSString *key, NSNumber *value) {
+    LGWritePreferenceObject(key, value);
+}
+
+void LGWritePreferenceObject(NSString *key, id value) {
     CFPreferencesSetAppValue((__bridge CFStringRef)key,
                              (__bridge CFPropertyListRef)value,
                              (__bridge CFStringRef)LGPrefsDomain);
@@ -269,6 +278,28 @@ NSDictionary *LGSliderSetting(NSString *key, NSString *title, NSString *subtitle
 
 NSDictionary *LGGlassEnabledSetting(NSString *key, BOOL fallback) {
     return LGSwitchSetting(key, LGLocalized(@"prefs.control.enabled"), LGLocalized(@"prefs.subtitle.enabled"), fallback);
+}
+
+NSDictionary *LGGlassRenderingModeSetting(NSString *key) {
+    return LGMenuSetting(key,
+                         LGLocalized(@"prefs.control.rendering_method"),
+                         LGLocalized(@"prefs.subtitle.rendering_method"),
+                         LGRenderingModeSnapshot,
+                         @[
+                             @{@"value": LGRenderingModeSnapshot, @"title": LGLocalized(@"prefs.rendering.snapshot.title")},
+                             @{@"value": LGRenderingModeLiveCapture, @"title": LGLocalized(@"prefs.rendering.live_capture.title")}
+                         ]);
+}
+
+NSDictionary *LGGlassRenderingModeSettingWithFallback(NSString *key, NSString *fallback) {
+    return LGMenuSetting(key,
+                         LGLocalized(@"prefs.control.rendering_method"),
+                         LGLocalized(@"prefs.subtitle.rendering_method"),
+                         fallback ?: LGRenderingModeSnapshot,
+                         @[
+                             @{@"value": LGRenderingModeSnapshot, @"title": LGLocalized(@"prefs.rendering.snapshot.title")},
+                             @{@"value": LGRenderingModeLiveCapture, @"title": LGLocalized(@"prefs.rendering.live_capture.title")}
+                         ]);
 }
 
 static const CGFloat kLGUniversalBezelMax = 50.0f;
@@ -555,6 +586,119 @@ NSArray<NSDictionary *> *LGAllSurfaceItems(void) {
     return items;
 }
 
+NSArray<NSDictionary *> *LGExperimentalItems(void) {
+    return @[
+        LGSectionSetting(LGLocalized(@"prefs.section.experimental_rendering.title"),
+                         LGLocalized(@"prefs.section.experimental_rendering.subtitle")),
+        LGMenuSetting(@"Dock.RenderingMode",
+                      LGLocalized(@"prefs.section.dock.title"),
+                      @"",
+                      LGRenderingModeSnapshot,
+                      @[
+                          @{@"value": LGRenderingModeSnapshot, @"title": LGLocalized(@"prefs.rendering.snapshot.title")},
+                          @{@"value": LGRenderingModeLiveCapture, @"title": LGLocalized(@"prefs.rendering.live_capture.title")}
+                      ]),
+        LGMenuSetting(@"FolderIcon.RenderingMode",
+                      LGLocalized(@"prefs.section.folder_icons.title"),
+                      @"",
+                      LGRenderingModeSnapshot,
+                      @[
+                          @{@"value": LGRenderingModeSnapshot, @"title": LGLocalized(@"prefs.rendering.snapshot.title")},
+                          @{@"value": LGRenderingModeLiveCapture, @"title": LGLocalized(@"prefs.rendering.live_capture.title")}
+                      ]),
+        LGMenuSetting(@"FolderOpen.RenderingMode",
+                      LGLocalized(@"prefs.section.folder_open.title"),
+                      @"",
+                      LGRenderingModeSnapshot,
+                      @[
+                          @{@"value": LGRenderingModeSnapshot, @"title": LGLocalized(@"prefs.rendering.snapshot.title")},
+                          @{@"value": LGRenderingModeLiveCapture, @"title": LGLocalized(@"prefs.rendering.live_capture.title")}
+                      ]),
+        LGMenuSetting(@"AppIcons.RenderingMode",
+                      LGLocalized(@"prefs.section.app_icons.title"),
+                      @"",
+                      LGRenderingModeSnapshot,
+                      @[
+                          @{@"value": LGRenderingModeSnapshot, @"title": LGLocalized(@"prefs.rendering.snapshot.title")},
+                          @{@"value": LGRenderingModeLiveCapture, @"title": LGLocalized(@"prefs.rendering.live_capture.title")}
+                      ]),
+        LGMenuSetting(@"ContextMenu.RenderingMode",
+                      LGLocalized(@"prefs.section.context_menu.title"),
+                      @"",
+                      LGRenderingModeSnapshot,
+                      @[
+                          @{@"value": LGRenderingModeSnapshot, @"title": LGLocalized(@"prefs.rendering.snapshot.title")},
+                          @{@"value": LGRenderingModeLiveCapture, @"title": LGLocalized(@"prefs.rendering.live_capture.title")}
+                      ]),
+        LGMenuSetting(@"Banner.RenderingMode",
+                      LGLocalized(@"prefs.section.banner.title"),
+                      @"",
+                      LGRenderingModeLiveCapture,
+                      @[
+                          @{@"value": LGRenderingModeSnapshot, @"title": LGLocalized(@"prefs.rendering.snapshot.title")},
+                          @{@"value": LGRenderingModeLiveCapture, @"title": LGLocalized(@"prefs.rendering.live_capture.title")}
+                      ]),
+        LGMenuSetting(@"SearchPill.RenderingMode",
+                      LGLocalized(@"prefs.section.search_pill.title"),
+                      @"",
+                      LGRenderingModeSnapshot,
+                      @[
+                          @{@"value": LGRenderingModeSnapshot, @"title": LGLocalized(@"prefs.rendering.snapshot.title")},
+                          @{@"value": LGRenderingModeLiveCapture, @"title": LGLocalized(@"prefs.rendering.live_capture.title")}
+                      ]),
+        LGMenuSetting(@"Widgets.RenderingMode",
+                      LGLocalized(@"prefs.section.widgets.title"),
+                      @"",
+                      LGRenderingModeSnapshot,
+                      @[
+                          @{@"value": LGRenderingModeSnapshot, @"title": LGLocalized(@"prefs.rendering.snapshot.title")},
+                          @{@"value": LGRenderingModeLiveCapture, @"title": LGLocalized(@"prefs.rendering.live_capture.title")}
+                      ]),
+        LGMenuSetting(@"Lockscreen.RenderingMode",
+                      LGLocalized(@"prefs.section.lockscreen_notifications.title"),
+                      @"",
+                      LGRenderingModeSnapshot,
+                      @[
+                          @{@"value": LGRenderingModeSnapshot, @"title": LGLocalized(@"prefs.rendering.snapshot.title")},
+                          @{@"value": LGRenderingModeLiveCapture, @"title": LGLocalized(@"prefs.rendering.live_capture.title")}
+                      ]),
+        LGMenuSetting(@"LockscreenQuickActions.RenderingMode",
+                      LGLocalized(@"prefs.section.lockscreen_quick_actions.title"),
+                      @"",
+                      LGRenderingModeSnapshot,
+                      @[
+                          @{@"value": LGRenderingModeSnapshot, @"title": LGLocalized(@"prefs.rendering.snapshot.title")},
+                          @{@"value": LGRenderingModeLiveCapture, @"title": LGLocalized(@"prefs.rendering.live_capture.title")}
+                      ]),
+        LGMenuSetting(@"AppLibrary.RenderingMode",
+                      LGLocalized(@"prefs.section.category_pods.title"),
+                      @"",
+                      LGRenderingModeSnapshot,
+                      @[
+                          @{@"value": LGRenderingModeSnapshot, @"title": LGLocalized(@"prefs.rendering.snapshot.title")},
+                          @{@"value": LGRenderingModeLiveCapture, @"title": LGLocalized(@"prefs.rendering.live_capture.title")}
+                      ]),
+        LGMenuSetting(@"AppLibrary.Search.RenderingMode",
+                      LGLocalized(@"prefs.section.search_field.title"),
+                      @"",
+                      LGRenderingModeSnapshot,
+                      @[
+                          @{@"value": LGRenderingModeSnapshot, @"title": LGLocalized(@"prefs.rendering.snapshot.title")},
+                          @{@"value": LGRenderingModeLiveCapture, @"title": LGLocalized(@"prefs.rendering.live_capture.title")}
+                      ]),
+        LGSectionSetting(LGLocalized(@"prefs.section.experimental_features.title"),
+                         LGLocalized(@"prefs.section.experimental_features.subtitle")),
+        LGSwitchSetting(@"Lockscreen.Clock.Enabled",
+                        LGLocalized(@"prefs.misc.lockscreen_clock.title"),
+                        LGLocalized(@"prefs.misc.lockscreen_clock.subtitle"),
+                        NO),
+        LGSwitchSetting(@"SettingsControls.Enabled",
+                        LGLocalized(@"prefs.misc.settings_controls.title"),
+                        LGLocalized(@"prefs.misc.settings_controls.subtitle"),
+                        NO),
+    ];
+}
+
 NSArray<NSDictionary *> *LGMoreOptionsItems(void) {
     return @[
         LGMenuSetting(kLGPrefsLanguageKey,
@@ -568,14 +712,9 @@ NSArray<NSDictionary *> *LGMoreOptionsItems(void) {
                         LGLocalized(@"prefs.misc.app_library_composite.title"),
                         LGLocalized(@"prefs.misc.app_library_composite.subtitle"),
                         NO),
-        LGSwitchSetting(@"Lockscreen.Clock.Enabled",
-                        LGLocalized(@"prefs.misc.lockscreen_clock.title"),
-                        LGLocalized(@"prefs.misc.lockscreen_clock.subtitle"),
-                        NO),
-        LGSwitchSetting(@"SettingsControls.Enabled",
-                        LGLocalized(@"prefs.misc.settings_controls.title"),
-                        LGLocalized(@"prefs.misc.settings_controls.subtitle"),
-                        NO),
+        LGNavSetting(LGLocalized(@"prefs.misc.experimental.title"),
+                     LGLocalized(@"prefs.misc.experimental.subtitle"),
+                     @"openExperimental"),
     ];
 }
 
@@ -587,6 +726,11 @@ void LGResetAllPreferences(void) {
         LGRemovePreference(key);
     }
     for (NSDictionary *item in LGMoreOptionsItems()) {
+        NSString *key = item[@"key"];
+        if (!key.length) continue;
+        LGRemovePreference(key);
+    }
+    for (NSDictionary *item in LGExperimentalItems()) {
         NSString *key = item[@"key"];
         if (!key.length) continue;
         LGRemovePreference(key);

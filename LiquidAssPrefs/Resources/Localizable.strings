@@ -12,6 +12,7 @@
 "prefs.control.specular" = "Specular";
 "prefs.control.quality" = "Quality";
 "prefs.control.fps_limit" = "FPS Limit";
+"prefs.control.rendering_method" = "Rendering Method";
 "prefs.control.floating_radius" = "Floating Radius";
 "prefs.control.full_screen_radius" = "Full Screen Radius";
 "prefs.control.home_button_radius" = "Home Button Radius";
@@ -36,7 +37,11 @@
 "prefs.subtitle.home_button_radius" = "Roundness of the glass view on home button devices.";
 "prefs.subtitle.icon_spacing" = "Gap between icon and label.";
 "prefs.subtitle.row_inset" = "Left and right padding for action rows.";
+"prefs.subtitle.rendering_method" = "Choose whether this surface samples from cached snapshots or live backdrop capture.";
 "prefs.subtitle.global_enabled" = "Master switch for every surface.";
+
+"prefs.rendering.snapshot.title" = "Snapshot";
+"prefs.rendering.live_capture.title" = "Live Capture";
 
 "prefs.section.dock.title" = "Dock";
 "prefs.section.dock.subtitle" = "Dock materials, shape variants, rendering quality, etc.";
@@ -60,6 +65,10 @@
 "prefs.section.main.subtitle" = "Configure the tweak across each major surface.";
 "prefs.section.misc.title" = "Miscellaneous";
 "prefs.section.misc.subtitle" = "Respring and More Options (¯\\_(ツ)_/¯)";
+"prefs.section.experimental_rendering.title" = "Rendering Methods";
+"prefs.section.experimental_rendering.subtitle" = "Choose snapshot or live capture for each surface. This is experimental and can be heavy.";
+"prefs.section.experimental_features.title" = "Experimental Features";
+"prefs.section.experimental_features.subtitle" = "Other unstable or niche options.";
 
 "prefs.button.reset" = "Reset";
 "prefs.button.cancel" = "Cancel";
@@ -104,6 +113,9 @@
 "prefs.misc.about.subtitle" = "Language, about, version details, donate, etc.";
 "prefs.misc.options_section.title" = "Extra stuff";
 "prefs.misc.options_section.subtitle" = "Experimental features and other stuff.";
+"prefs.misc.experimental.title" = "Experimental";
+"prefs.misc.experimental.subtitle" = "Rendering methods and unstable features.";
+"prefs.misc.experimental.page_subtitle" = "Per-surface rendering methods and other experimental features.";
 "prefs.misc.language.title" = "Language";
 "prefs.misc.language.subtitle" = "Select the language for this preferences UI.";
 "prefs.misc.app_library_composite.title" = "AL samples app icons";

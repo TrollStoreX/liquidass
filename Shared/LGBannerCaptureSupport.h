@@ -10,3 +10,9 @@ BOOL LGCaptureLiveBackdropTextureForHost(UIView *host,
                                          const void *associationKey,
                                          CGPoint *outOrigin,
                                          CGSize *outSamplingResolution);
+BOOL LGApplyRenderingModeToGlassHost(UIView *host,
+                                     LiquidGlassView *glass,
+                                     NSString *renderingModeKey,
+                                     const void *associationKey,
+                                     UIImage *snapshot,
+                                     CGPoint snapshotOrigin);

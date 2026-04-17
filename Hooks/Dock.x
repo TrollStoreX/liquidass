@@ -1,5 +1,6 @@
 #import "../LiquidGlass.h"
 #import "../Shared/LGHookSupport.h"
+#import "../Shared/LGBannerCaptureSupport.h"
 #import "../Shared/LGPrefAccessors.h"
 #import <objc/runtime.h>
 
@@ -85,6 +86,7 @@ static void *kDockTintKey = &kDockTintKey;
 static void *kDockGlassKey = &kDockGlassKey;
 static void *kDockOriginalFrameKey = &kDockOriginalFrameKey;
 static void *kDockOriginalSuperviewClipsKey = &kDockOriginalSuperviewClipsKey;
+static void *kDockBackdropViewKey = &kDockBackdropViewKey;
 
 static LGDockMode LGResolveDockModeForView(UIView *view) {
     if (isInsideCategoryStackBackground(view)) return LGDockModeNone;
@@ -100,7 +102,8 @@ static LGDockMode LGResolveDockModeForView(UIView *view) {
 
 static void startDockDisplayLink(void) {
     LGStartDisplayLink(&sDockLink, &sDockTicker, LGPreferredFramesPerSecondForKey(@"Homescreen.FPS", 30), ^{
-        LG_updateRegisteredGlassViews(LGUpdateGroupDock);
+        if (LG_prefersLiveCapture(@"Dock.RenderingMode")) LGDockRefreshAllHosts();
+        else LG_updateRegisteredGlassViews(LGUpdateGroupDock);
     });
 }
 
@@ -190,6 +193,7 @@ static void removeDockOverlays(UIView *host) {
     LiquidGlassView *glass = objc_getAssociatedObject(host, kDockGlassKey);
     if (glass) [glass removeFromSuperview];
     objc_setAssociatedObject(host, kDockGlassKey, nil, OBJC_ASSOCIATION_ASSIGN);
+    LGRemoveLiveBackdropCaptureView(host, kDockBackdropViewKey);
     LGRestoreDockHostFrameIfNeeded(host);
 }
 
@@ -205,7 +209,7 @@ static void injectIntoDock(UIView *self_) {
 
     CGPoint wallpaperOrigin = CGPointZero;
     UIImage *wallpaper = LG_getHomescreenSnapshot(&wallpaperOrigin);
-    if (!wallpaper) {
+    if (!wallpaper && !LG_prefersLiveCapture(@"Dock.RenderingMode")) {
         if ([objc_getAssociatedObject(self_, kDockRetryKey) boolValue]) return;
         objc_setAssociatedObject(self_, kDockRetryKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)),
@@ -246,7 +250,15 @@ static void injectIntoDock(UIView *self_) {
     glass.blur            = LGDockBlur();
     glass.wallpaperScale  = LGDockWallpaperScale();
     glass.updateGroup     = LGUpdateGroupDock;
-    [glass updateOrigin];
+    if (!LGApplyRenderingModeToGlassHost(self_,
+                                         glass,
+                                         @"Dock.RenderingMode",
+                                         kDockBackdropViewKey,
+                                         wallpaper,
+                                         wallpaperOrigin)) {
+        objc_setAssociatedObject(self_, kDockRetryKey, nil, OBJC_ASSOCIATION_ASSIGN);
+        return;
+    }
     ensureDockTintOverlay(self_);
     objc_setAssociatedObject(self_, kDockRetryKey, nil, OBJC_ASSOCIATION_ASSIGN);
 }

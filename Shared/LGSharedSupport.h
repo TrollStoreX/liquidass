@@ -31,12 +31,16 @@ FOUNDATION_EXPORT NSString * const LGBannerContentViewClassName;
 FOUNDATION_EXPORT NSString * const LGBannerControllerClassName;
 FOUNDATION_EXPORT NSString * const LGBannerPresentableControllerClassName;
 FOUNDATION_EXPORT NSString * const LGAppLibrarySidebarMarkerClassName;
+FOUNDATION_EXPORT NSString * const LGRenderingModeSnapshot;
+FOUNDATION_EXPORT NSString * const LGRenderingModeLiveCapture;
 CGFloat LGEffectiveBannerBlur(CGFloat configuredBlur);
 
 BOOL LG_prefBool(NSString *key, BOOL fallback);
 CGFloat LG_prefFloat(NSString *key, CGFloat fallback);
 NSInteger LG_prefInteger(NSString *key, NSInteger fallback);
+NSString *LG_prefString(NSString *key, NSString *fallback);
 BOOL LG_globalEnabled(void);
+BOOL LG_prefersLiveCapture(NSString *key);
 void LGReloadPreferences(void);
 void LGObservePreferenceChanges(dispatch_block_t block);
 
