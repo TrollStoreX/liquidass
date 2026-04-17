@@ -2,10 +2,6 @@
 #import "LGMetalShaderSource.h"
 #import <os/lock.h>
 
-#ifndef LG_DEBUG_VERBOSE
-#define LG_DEBUG_VERBOSE 0
-#endif
-
 NSString * const LGPrefsDomain = @"dylv.liquidassprefs";
 CFStringRef const LGPrefsChangedNotification = CFSTR("dylv.liquidassprefs/Reload");
 CFStringRef const LGPrefsRespringNotification = CFSTR("dylv.liquidassprefs/Respring");
@@ -265,15 +261,15 @@ void LGLog(NSString *format, ...) {
 }
 
 void LGDebugLog(NSString *format, ...) {
-#if LG_DEBUG_VERBOSE
+    if (!LG_prefBool(@"DebugLogging.Enabled", NO)) {
+        (void)format;
+        return;
+    }
     va_list args;
     va_start(args, format);
     NSString *message = [[NSString alloc] initWithFormat:format arguments:args];
     va_end(args);
     LGLog(@"%@", message);
-#else
-    (void)format;
-#endif
 }
 
 void LGAssertMainThread(void) {
