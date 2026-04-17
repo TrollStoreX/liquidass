@@ -240,12 +240,19 @@ NSString *LG_prefString(NSString *key, NSString *fallback) {
     return fallback;
 }
 
+NSString *LGDefaultRenderingModeForKey(NSString *key) {
+    if ([key isEqualToString:@"Banner.RenderingMode"]) {
+        return LGRenderingModeLiveCapture;
+    }
+    return LGRenderingModeSnapshot;
+}
+
 BOOL LG_globalEnabled(void) {
     return LG_prefBool(@"Global.Enabled", NO);
 }
 
 BOOL LG_prefersLiveCapture(NSString *key) {
-    return [LG_prefString(key, LGRenderingModeSnapshot) isEqualToString:LGRenderingModeLiveCapture];
+    return [LG_prefString(key, LGDefaultRenderingModeForKey(key)) isEqualToString:LGRenderingModeLiveCapture];
 }
 
 void LGLog(NSString *format, ...) {
