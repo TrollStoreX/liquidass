@@ -412,7 +412,7 @@
                 if (defaultValue) {
                     BOOL enabled = [defaultValue boolValue];
                     [toggle setOn:enabled animated:YES];
-                    if ([preferenceKey hasSuffix:@".Enabled"]) {
+                    if ([objc_getAssociatedObject(toggle, kLGControlledByEnabledKey) boolValue]) {
                         [self updatePanelsControlledByEnabledKey:preferenceKey enabled:enabled animated:YES];
                     }
                 }
@@ -701,10 +701,15 @@
             LGWritePreferenceAndMaybeRequireRespring(item[@"key"], @(sender.isOn));
             [self handleRespringStateChanged:nil];
         }
-        if ([item[@"key"] hasSuffix:@".Enabled"]) {
+        if ([item[@"key"] isEqualToString:@"Tint.Override.PerSurfaceEnabled"]) {
+            [self reloadLocalizedContent];
+            [self reloadVisibleSettings];
+        }
+        if ([item[@"controls_following_panel"] boolValue]) {
             [self updatePanelsControlledByEnabledKey:item[@"key"] enabled:sender.isOn animated:YES];
         }
     }] forControlEvents:UIControlEventValueChanged];
+    objc_setAssociatedObject(toggle, kLGControlledByEnabledKey, item[@"controls_following_panel"], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     return toggle;
 }
 
@@ -1116,9 +1121,7 @@
 
     if (startIndex < items.count) {
         NSDictionary *candidate = items[startIndex];
-        NSString *key = candidate[@"key"];
         if ([candidate[@"type"] isEqualToString:@"switch"]
-            && [key hasSuffix:@".Enabled"]
             && [candidate[@"controls_following_panel"] boolValue]) {
             enabledItem = candidate;
             startIndex += 1;

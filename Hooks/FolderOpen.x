@@ -60,7 +60,7 @@ LG_FLOAT_PREF_FUNC(LGFolderOpenLightTintAlpha, "FolderOpen.LightTintAlpha", 0.1)
 LG_FLOAT_PREF_FUNC(LGFolderOpenDarkTintAlpha, "FolderOpen.DarkTintAlpha", 0.0)
 
 static UIColor *folderOpenTintColorForView(UIView *view) {
-    return LGDefaultTintColorForView(view, LGFolderOpenLightTintAlpha(), LGFolderOpenDarkTintAlpha());
+    return LGDefaultTintColorForViewWithOverrideKey(view, LGFolderOpenLightTintAlpha(), LGFolderOpenDarkTintAlpha(), @"FolderOpen.TintOverrideMode");
 }
 
 static BOOL LGFolderOpenFilterLooksLikeTintFilter(id filter) {

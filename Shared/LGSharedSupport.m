@@ -24,6 +24,9 @@ NSString * const LGBannerPresentableControllerClassName = @"SBNotificationPresen
 NSString * const LGAppLibrarySidebarMarkerClassName = @"_SBHLibraryFrozenSafeAreaInsetsView";
 NSString * const LGRenderingModeSnapshot = @"snapshot";
 NSString * const LGRenderingModeLiveCapture = @"live_capture";
+NSString * const LGTintOverrideSystem = @"system";
+NSString * const LGTintOverrideLight = @"light";
+NSString * const LGTintOverrideDark = @"dark";
 static NSString * const LGPrefsDidReloadInProcessNotification = @"dylv.liquidassprefs.InProcessReload";
 
 static NSDictionary<NSString *, id> *sLGCachedPreferences = nil;

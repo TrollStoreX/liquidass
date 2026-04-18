@@ -33,7 +33,16 @@ LG_FLOAT_PREF_FUNC(LGLockscreenLightTintAlpha, "Lockscreen.LightTintAlpha", 0.1)
 LG_FLOAT_PREF_FUNC(LGLockscreenDarkTintAlpha, "Lockscreen.DarkTintAlpha", 0.0)
 
 static UIColor *LGLockscreenTintColorForHost(UIView *view, CGFloat lightAlpha, CGFloat darkAlpha) {
-    return LGDefaultTintColorForView(view, lightAlpha, darkAlpha);
+    NSString *overrideKey = @"Lockscreen.TintOverrideMode";
+    if (LGIsLockscreenQuickActionsHost(view)) {
+        overrideKey = @"LockscreenQuickActions.TintOverrideMode";
+    } else if (LGHasAncestorClassNamed(view, LGBannerWindowClassName) ||
+               LGHasAncestorClassNamed(view, LGBannerContentViewClassName) ||
+               LGResponderChainContainsClassNamed(view, LGBannerControllerClassName) ||
+               LGResponderChainContainsClassNamed(view, LGBannerPresentableControllerClassName)) {
+        overrideKey = @"Banner.TintOverrideMode";
+    }
+    return LGDefaultTintColorForViewWithOverrideKey(view, lightAlpha, darkAlpha, overrideKey);
 }
 
 static void LGEnsureLockscreenTintOverlay(UIView *host,

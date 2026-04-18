@@ -17,6 +17,8 @@ LG_FLOAT_PREF_FUNC(LGClockRefractiveIndex, "Lockscreen.Clock.RefractiveIndex", 1
 LG_FLOAT_PREF_FUNC(LGClockSpecularOpacity, "Lockscreen.Clock.SpecularOpacity", 0.8)
 LG_FLOAT_PREF_FUNC(LGClockBlur, "Lockscreen.Clock.Blur", 3.0)
 LG_FLOAT_PREF_FUNC(LGClockWallpaperScale, "Lockscreen.Clock.WallpaperScale", 1.0)
+LG_FLOAT_PREF_FUNC(LGClockLightTintAlpha, "Lockscreen.Clock.LightTintAlpha", 0.3)
+LG_FLOAT_PREF_FUNC(LGClockDarkTintAlpha, "Lockscreen.Clock.DarkTintAlpha", 0.0)
 LG_FLOAT_PREF_FUNC(LGClockLegacyFontWeight, "Lockscreen.Clock.LegacyFontWeight", UIFontWeightHeavy)
 LG_FLOAT_PREF_FUNC(LGClockLegacySizeBoost, "Lockscreen.Clock.LegacySizeBoost", 1.05)
 LG_FLOAT_PREF_FUNC(LGClockLegacyEmbolden, "Lockscreen.Clock.LegacyEmbolden", 0.35)
@@ -118,6 +120,17 @@ static UIImage *LGClockWallpaperSource(void) {
     return LGGetLockscreenSnapshotCached();
 }
 
+static UIColor *LGClockTintColorForView(UIView *view) {
+    NSString *override = LG_prefString(@"Lockscreen.Clock.TintOverrideMode", LGTintOverrideLight);
+    if ([override isEqualToString:LGTintOverrideDark]) {
+        return [UIColor colorWithWhite:0.0 alpha:LGClockDarkTintAlpha()];
+    }
+    if ([override isEqualToString:LGTintOverrideLight]) {
+        return [UIColor colorWithWhite:1.0 alpha:LGClockLightTintAlpha()];
+    }
+    return LGDefaultTintColorForView(view, LGClockLightTintAlpha(), LGClockDarkTintAlpha());
+}
+
 static UIScrollView *LGClockAncestorScrollView(UIView *view) {
     UIView *cursor = view.superview;
     while (cursor) {
@@ -130,6 +143,7 @@ static UIScrollView *LGClockAncestorScrollView(UIView *view) {
 
 @interface LGClockGlassView : UIView
 @property (nonatomic, strong) LiquidGlassView *glassView;
+@property (nonatomic, strong) UIView *tintView;
 @property (nonatomic, copy) NSString *displayText;
 @property (nonatomic, copy) NSAttributedString *displayAttributedText;
 @property (nonatomic, strong) UIFont *displayFont;
@@ -171,6 +185,12 @@ static UIScrollView *LGClockAncestorScrollView(UIView *view) {
     _glassView.releasesWallpaperAfterUpload = YES;
     _glassView.updateGroup = LGUpdateGroupLockscreen;
     [self addSubview:_glassView];
+
+    _tintView = [[UIView alloc] initWithFrame:self.bounds];
+    _tintView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    _tintView.userInteractionEnabled = NO;
+    _tintView.backgroundColor = LGClockTintColorForView(self);
+    [self addSubview:_tintView];
     return self;
 }
 
@@ -283,16 +303,22 @@ static UIScrollView *LGClockAncestorScrollView(UIView *view) {
     UIImage *maskImage = [self lg_maskImageForBounds:self.bounds];
     if (!maskImage) {
         self.glassView.shapeMaskImage = nil;
+        self.tintView.maskView = nil;
         self.hidden = YES;
         return;
     }
     self.glassView.shapeMaskImage = maskImage;
+    UIImageView *maskView = [[UIImageView alloc] initWithFrame:self.tintView.bounds];
+    maskView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    maskView.image = maskImage;
+    self.tintView.maskView = maskView;
     self.hidden = NO;
 }
 
 - (void)layoutSubviews {
     [super layoutSubviews];
     self.glassView.frame = self.bounds;
+    self.tintView.frame = self.bounds;
     self.glassView.wallpaperImage = LGClockWallpaperSource();
     self.glassView.wallpaperOrigin = LG_getLockscreenWallpaperOrigin();
     [self.glassView updateOrigin];
@@ -321,6 +347,7 @@ static UIScrollView *LGClockAncestorScrollView(UIView *view) {
     self.glassView.specularOpacity = LGClockSpecularOpacity();
     self.glassView.blur = LGClockBlur();
     self.glassView.wallpaperScale = LGClockWallpaperScale();
+    self.tintView.backgroundColor = LGClockTintColorForView(host ?: self);
     self.hidden = !self.displayText.length;
     [self setNeedsLayout];
 }

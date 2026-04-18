@@ -219,7 +219,7 @@ static void restoreContextMenuSeparators(UIView *root) {
 }
 
 static UIColor *contextMenuTintColorForView(UIView *view) {
-    return LGDefaultTintColorForView(view, LGContextMenuLightTintAlpha(), LGContextMenuDarkTintAlpha());
+    return LGDefaultTintColorForViewWithOverrideKey(view, LGContextMenuLightTintAlpha(), LGContextMenuDarkTintAlpha(), @"ContextMenu.TintOverrideMode");
 }
 
 static void rememberContextMenuOriginalCornerStyle(UIView *view) {

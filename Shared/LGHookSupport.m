@@ -40,7 +40,17 @@ void LGTraverseViews(UIView *root, void (^block)(UIView *view)) {
     }
 }
 
-UIColor *LGDefaultTintColorForView(UIView *view, CGFloat lightAlpha, CGFloat darkAlpha) {
+UIColor *LGDefaultTintColorForViewWithOverrideKey(UIView *view, CGFloat lightAlpha, CGFloat darkAlpha, NSString *overrideKey) {
+    NSString *override = nil;
+    if (overrideKey.length) {
+        override = LG_prefString(overrideKey, LGTintOverrideSystem);
+    }
+    if ([override isEqualToString:LGTintOverrideDark]) {
+        return [UIColor colorWithWhite:0.0 alpha:darkAlpha];
+    }
+    if ([override isEqualToString:LGTintOverrideLight]) {
+        return [UIColor colorWithWhite:1.0 alpha:lightAlpha];
+    }
     if (@available(iOS 12.0, *)) {
         UITraitCollection *traits = view.traitCollection ?: UIScreen.mainScreen.traitCollection;
         if (traits.userInterfaceStyle == UIUserInterfaceStyleDark) {
@@ -48,6 +58,10 @@ UIColor *LGDefaultTintColorForView(UIView *view, CGFloat lightAlpha, CGFloat dar
         }
     }
     return [UIColor colorWithWhite:1.0 alpha:lightAlpha];
+}
+
+UIColor *LGDefaultTintColorForView(UIView *view, CGFloat lightAlpha, CGFloat darkAlpha) {
+    return LGDefaultTintColorForViewWithOverrideKey(view, lightAlpha, darkAlpha, nil);
 }
 
 NSInteger LGPreferredFramesPerSecondForKey(NSString *key, NSInteger minFPS) {

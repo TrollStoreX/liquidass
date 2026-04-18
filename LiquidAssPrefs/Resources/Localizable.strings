@@ -77,6 +77,8 @@
 "prefs.section.experimental_rendering.subtitle" = "Choose snapshot or live capture for each surface. This is experimental and can be heavy.";
 "prefs.section.experimental_features.title" = "Experimental Features";
 "prefs.section.experimental_features.subtitle" = "Other unstable or niche options.";
+"prefs.section.surface_tint_override.title" = "Per-Surface Tint Override";
+"prefs.section.surface_tint_override.subtitle" = "Override tint mode for individual surfaces. Follow System uses the current system appearance.";
 
 "prefs.button.reset" = "Reset";
 "prefs.button.cancel" = "Cancel";
@@ -132,6 +134,11 @@
 "prefs.misc.app_library_composite.subtitle" = "Also samples homescreen icons and not just the wallpaper in App Library. Accurate to iOS 26 but can look weird on certain setups.";
 "prefs.misc.debug_logging.title" = "Debug Logging";
 "prefs.misc.debug_logging.subtitle" = "Enable verbose diagnostic logs written to /tmp/LiquidAss.log";
+"prefs.misc.tint_override_per_surface.title" = "Per-Surface Tint Override";
+"prefs.misc.tint_override_per_surface.subtitle" = "Show individual tint override controls for each surface.";
+"prefs.tint_override.system.title" = "Follow System";
+"prefs.tint_override.light.title" = "Force Light Tint";
+"prefs.tint_override.dark.title" = "Force Dark Tint";
 "prefs.misc.lockscreen_clock.title" = "Lockscreen Clock";
 "prefs.misc.lockscreen_clock.subtitle" = "Enable the custom lockscreen glass clock.";
 "prefs.misc.settings_controls.title" = "Settings Sliders and Switches";

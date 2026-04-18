@@ -341,6 +341,40 @@ NSDictionary *LGGlassDarkTintSetting(NSString *key, CGFloat fallback, CGFloat mi
     return LGSliderSetting(key, LGLocalized(@"prefs.control.dark_tint_alpha"), LGLocalized(@"prefs.subtitle.dark_tint_alpha"), fallback, min, kLGUniversalTintMax, decimals);
 }
 
+NSDictionary *LGGlassTintOverrideSettingWithFallback(NSString *key, NSString *title, NSString *fallback) {
+    return LGMenuSetting(key,
+                         title ?: @"",
+                         @"",
+                         fallback ?: LGTintOverrideSystem,
+                         @[
+                             @{@"value": LGTintOverrideSystem, @"title": LGLocalized(@"prefs.tint_override.system.title")},
+                             @{@"value": LGTintOverrideLight, @"title": LGLocalized(@"prefs.tint_override.light.title")},
+                             @{@"value": LGTintOverrideDark, @"title": LGLocalized(@"prefs.tint_override.dark.title")}
+                         ]);
+}
+
+NSDictionary *LGGlassTintOverrideSetting(NSString *key, NSString *title) {
+    return LGGlassTintOverrideSettingWithFallback(key, title, LGTintOverrideSystem);
+}
+
+static NSArray<NSDictionary *> *LGPerSurfaceTintOverrideItems(void) {
+    return @[
+        LGGlassTintOverrideSetting(@"Dock.TintOverrideMode", LGLocalized(@"prefs.section.dock.title")),
+        LGGlassTintOverrideSetting(@"FolderIcon.TintOverrideMode", LGLocalized(@"prefs.section.folder_icons.title")),
+        LGGlassTintOverrideSetting(@"FolderOpen.TintOverrideMode", LGLocalized(@"prefs.section.folder_open.title")),
+        LGGlassTintOverrideSetting(@"AppIcons.TintOverrideMode", LGLocalized(@"prefs.section.app_icons.title")),
+        LGGlassTintOverrideSetting(@"ContextMenu.TintOverrideMode", LGLocalized(@"prefs.section.context_menu.title")),
+        LGGlassTintOverrideSetting(@"Banner.TintOverrideMode", LGLocalized(@"prefs.section.banner.title")),
+        LGGlassTintOverrideSetting(@"SearchPill.TintOverrideMode", LGLocalized(@"prefs.section.search_pill.title")),
+        LGGlassTintOverrideSetting(@"Widgets.TintOverrideMode", LGLocalized(@"prefs.section.widgets.title")),
+        LGGlassTintOverrideSetting(@"Lockscreen.TintOverrideMode", LGLocalized(@"prefs.section.lockscreen_notifications.title")),
+        LGGlassTintOverrideSetting(@"LockscreenQuickActions.TintOverrideMode", LGLocalized(@"prefs.section.lockscreen_quick_actions.title")),
+        LGGlassTintOverrideSettingWithFallback(@"Lockscreen.Clock.TintOverrideMode", LGLocalized(@"prefs.section.lockscreen_clock.title"), LGTintOverrideLight),
+        LGGlassTintOverrideSetting(@"AppLibrary.TintOverrideMode", LGLocalized(@"prefs.section.category_pods.title")),
+        LGGlassTintOverrideSetting(@"AppLibrary.Search.TintOverrideMode", LGLocalized(@"prefs.section.search_field.title")),
+    ];
+}
+
 NSDictionary *LGGlassRefractiveIndexSetting(NSString *key, CGFloat fallback, CGFloat min, CGFloat max, NSInteger decimals) {
     return LGSliderSetting(key, LGLocalized(@"prefs.control.refractive_index"), LGLocalized(@"prefs.subtitle.refractive_index"), fallback, min, kLGUniversalRefractiveIndexMax, decimals);
 }
@@ -511,7 +545,7 @@ NSArray<NSDictionary *> *LGLockscreenItems(void) {
 
     [items addObject:LGGlassBezelSetting(@"Lockscreen.Clock.BezelWidth", 24.0, 0.0, 50.0, 1)];
     [items addObject:LGGlassBlurSetting(@"Lockscreen.Clock.Blur", 3.0, 0.0, 50.0, 1)];
-    [items addObject:LGGlassLightTintSetting(@"Lockscreen.Clock.LightTintAlpha", 0.1, 0.0, 1.0, 2)];
+    [items addObject:LGGlassLightTintSetting(@"Lockscreen.Clock.LightTintAlpha", 0.3, 0.0, 1.0, 2)];
     [items addObject:LGGlassDarkTintSetting(@"Lockscreen.Clock.DarkTintAlpha", 0.0, 0.0, 1.0, 2)];
     [items addObject:LGGlassThicknessSetting(@"Lockscreen.Clock.GlassThickness", 150.0, 0.0, 200.0, 1)];
     [items addObject:LGGlassRefractiveIndexSetting(@"Lockscreen.Clock.RefractiveIndex", 1.5, 0.0, 5.0, 2)];
@@ -749,26 +783,45 @@ NSArray<NSDictionary *> *LGExperimentalItems(void) {
 }
 
 NSArray<NSDictionary *> *LGMoreOptionsItems(void) {
-    return @[
+    NSMutableArray<NSDictionary *> *items = [NSMutableArray arrayWithArray:@[
         LGMenuSetting(kLGPrefsLanguageKey,
                       LGLocalized(@"prefs.misc.language.title"),
                       @"",
                       @"en",
                       LGAvailableLanguageChoices()),
-        LGSectionSetting(LGLocalized(@"prefs.misc.options_section.title"),
-                         LGLocalized(@"prefs.misc.options_section.subtitle")),
-        LGSwitchSetting(@"AppLibrary.CompositeSnapshot",
-                        LGLocalized(@"prefs.misc.app_library_composite.title"),
-                        LGLocalized(@"prefs.misc.app_library_composite.subtitle"),
-                        NO),
-        LGSwitchSetting(@"DebugLogging.Enabled",
-                        LGLocalized(@"prefs.misc.debug_logging.title"),
-                        LGLocalized(@"prefs.misc.debug_logging.subtitle"),
-                        NO),
-        LGNavSetting(LGLocalized(@"prefs.misc.experimental.title"),
-                     LGLocalized(@"prefs.misc.experimental.subtitle"),
-                     @"openExperimental"),
-    ];
+        LGSectionSetting(@"", @""),
+        LGSectionSetting(LGLocalized(@"prefs.section.surface_tint_override.title"),
+                         LGLocalized(@"prefs.section.surface_tint_override.subtitle")),
+        ({
+            NSMutableDictionary *item = [LGSwitchSetting(@"Tint.Override.PerSurfaceEnabled",
+                                                         LGLocalized(@"prefs.control.enabled"),
+                                                         LGLocalized(@"prefs.misc.tint_override_per_surface.subtitle"),
+                                                         NO) mutableCopy];
+            item[@"controls_following_panel"] = @YES;
+            [item copy];
+        }),
+    ]];
+
+    if ([LGReadPreference(@"Tint.Override.PerSurfaceEnabled", @NO) boolValue]) {
+        [items addObjectsFromArray:LGPerSurfaceTintOverrideItems()];
+    }
+
+    [items addObject:LGSectionSetting(@"", @"")];
+    [items addObject:LGSectionSetting(LGLocalized(@"prefs.misc.options_section.title"),
+                                      LGLocalized(@"prefs.misc.options_section.subtitle"))];
+    [items addObject:LGSwitchSetting(@"AppLibrary.CompositeSnapshot",
+                                     LGLocalized(@"prefs.misc.app_library_composite.title"),
+                                     LGLocalized(@"prefs.misc.app_library_composite.subtitle"),
+                                     NO)];
+    [items addObject:LGSwitchSetting(@"DebugLogging.Enabled",
+                                     LGLocalized(@"prefs.misc.debug_logging.title"),
+                                     LGLocalized(@"prefs.misc.debug_logging.subtitle"),
+                                     NO)];
+    [items addObject:LGNavSetting(LGLocalized(@"prefs.misc.experimental.title"),
+                                  LGLocalized(@"prefs.misc.experimental.subtitle"),
+                                  @"openExperimental")];
+
+    return [items copy];
 }
 
 void LGResetAllPreferences(void) {
@@ -784,6 +837,11 @@ void LGResetAllPreferences(void) {
         LGRemovePreference(key);
     }
     for (NSDictionary *item in LGExperimentalItems()) {
+        NSString *key = item[@"key"];
+        if (!key.length) continue;
+        LGRemovePreference(key);
+    }
+    for (NSDictionary *item in LGPerSurfaceTintOverrideItems()) {
         NSString *key = item[@"key"];
         if (!key.length) continue;
         LGRemovePreference(key);

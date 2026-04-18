@@ -75,7 +75,7 @@ LG_FLOAT_PREF_FUNC(LGFolderIconDarkTintAlpha, "FolderIcon.DarkTintAlpha", 0.0)
 static CGFloat LGFolderIconCornerRadius(CGFloat fallback) { return LG_prefFloat(@"FolderIcon.CornerRadius", fallback); }
 
 static UIColor *folderIconTintColorForView(UIView *view) {
-    return LGDefaultTintColorForView(view, LGFolderIconLightTintAlpha(), LGFolderIconDarkTintAlpha());
+    return LGDefaultTintColorForViewWithOverrideKey(view, LGFolderIconLightTintAlpha(), LGFolderIconDarkTintAlpha(), @"FolderIcon.TintOverrideMode");
 }
 
 static void removeFolderIconOverlays(UIView *self_) {

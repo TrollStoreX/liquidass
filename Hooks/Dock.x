@@ -166,7 +166,7 @@ static void LGApplyDockHostPaddingIfNeeded(UIView *host, LGDockMode mode) {
 }
 
 static UIColor *dockTintColorForView(UIView *view) {
-    return LGDefaultTintColorForView(view, LGDockLightTintAlpha(), LGDockDarkTintAlpha());
+    return LGDefaultTintColorForViewWithOverrideKey(view, LGDockLightTintAlpha(), LGDockDarkTintAlpha(), @"Dock.TintOverrideMode");
 }
 
 static void ensureDockTintOverlay(UIView *host) {

@@ -62,7 +62,7 @@ static void LGStopWidgetDisplayLink(void) {
 }
 
 static UIColor *widgetTintColorForView(UIView *view) {
-    return LGDefaultTintColorForView(view, LGWidgetLightTintAlpha(), LGWidgetDarkTintAlpha());
+    return LGDefaultTintColorForViewWithOverrideKey(view, LGWidgetLightTintAlpha(), LGWidgetDarkTintAlpha(), @"Widgets.TintOverrideMode");
 }
 
 static void removeWidgetOverlays(UIView *view) {

@@ -50,7 +50,7 @@ static CGRect LGAppIconGlassFrameInHost(UIView *iconView, UIView *host) {
 }
 
 static UIColor *appIconTintColorForView(UIView *view) {
-    return LGDefaultTintColorForView(view, LGAppIconLightTintAlpha(), LGAppIconDarkTintAlpha());
+    return LGDefaultTintColorForViewWithOverrideKey(view, LGAppIconLightTintAlpha(), LGAppIconDarkTintAlpha(), @"AppIcons.TintOverrideMode");
 }
 
 static void removeAppIconOverlays(UIView *view) {

@@ -64,7 +64,7 @@ static void LGRemoveSearchPillGlass(UIView *view) {
 }
 
 static UIColor *LGSearchPillTintColorForView(UIView *view) {
-    return LGDefaultTintColorForView(view, LGSearchPillLightTintAlpha(), LGSearchPillDarkTintAlpha());
+    return LGDefaultTintColorForViewWithOverrideKey(view, LGSearchPillLightTintAlpha(), LGSearchPillDarkTintAlpha(), @"SearchPill.TintOverrideMode");
 }
 
 static void LGSearchPillScheduleRetry(UIView *host) {

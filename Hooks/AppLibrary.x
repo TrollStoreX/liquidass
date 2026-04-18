@@ -208,7 +208,13 @@ static void LGRemoveAppLibraryGlass(UIView *view) {
 }
 
 static UIColor *LGAppLibraryTintColorForView(UIView *view, CGFloat lightAlpha, CGFloat darkAlpha) {
-    return LGDefaultTintColorForView(view, lightAlpha, darkAlpha);
+    NSString *overrideKey = nil;
+    if (lightAlpha == LGAppLibSearchLightTintAlpha() && darkAlpha == LGAppLibSearchDarkTintAlpha()) {
+        overrideKey = @"AppLibrary.Search.TintOverrideMode";
+    } else {
+        overrideKey = @"AppLibrary.TintOverrideMode";
+    }
+    return LGDefaultTintColorForViewWithOverrideKey(view, lightAlpha, darkAlpha, overrideKey);
 }
 
 static void LGEnsureAppLibraryTintOverlay(UIView *host, CGFloat cornerRadius, UIColor *tintColor) {

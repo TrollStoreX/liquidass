@@ -7,6 +7,7 @@ BOOL LGHasAncestorClassNamed(UIView *view, NSString *className);
 BOOL LGResponderChainContainsClassNamed(UIResponder *responder, NSString *className);
 void LGTraverseViews(UIView *root, void (^block)(UIView *view));
 UIColor *LGDefaultTintColorForView(UIView *view, CGFloat lightAlpha, CGFloat darkAlpha);
+UIColor *LGDefaultTintColorForViewWithOverrideKey(UIView *view, CGFloat lightAlpha, CGFloat darkAlpha, NSString *overrideKey);
 NSInteger LGPreferredFramesPerSecondForKey(NSString *key, NSInteger minFPS);
 UIView *LGEnsureTintOverlayView(UIView *host,
                                 const void *associationKey,

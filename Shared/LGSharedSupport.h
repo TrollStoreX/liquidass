@@ -33,6 +33,9 @@ FOUNDATION_EXPORT NSString * const LGBannerPresentableControllerClassName;
 FOUNDATION_EXPORT NSString * const LGAppLibrarySidebarMarkerClassName;
 FOUNDATION_EXPORT NSString * const LGRenderingModeSnapshot;
 FOUNDATION_EXPORT NSString * const LGRenderingModeLiveCapture;
+FOUNDATION_EXPORT NSString * const LGTintOverrideSystem;
+FOUNDATION_EXPORT NSString * const LGTintOverrideLight;
+FOUNDATION_EXPORT NSString * const LGTintOverrideDark;
 CGFloat LGEffectiveBannerBlur(CGFloat configuredBlur);
 
 BOOL LG_prefBool(NSString *key, BOOL fallback);
