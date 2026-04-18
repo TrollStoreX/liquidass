@@ -82,7 +82,7 @@
 
 "prefs.button.reset" = "Đặt lại";
 "prefs.button.cancel" = "Hủy";
-"prefs.button.respring" = "Khởi động lại giao diện";
+"prefs.button.respring" = "Respring";
 "prefs.button.later" = "Để sau";
 "prefs.button.reopen_settings" = "Mở lại";
 "prefs.button.ok" = "OK";
@@ -119,8 +119,8 @@
 "prefs.section.lockscreen_clock.subtitle" = "Điều khiển đồng hồ kính ở màn hình khóa.";
 "prefs.surface.app_library.title" = "App Library";
 "prefs.surface.app_library.subtitle" = "Vật liệu cho cụm danh mục và thanh tìm kiếm.";
-"prefs.misc.respring.title" = "Khởi động lại giao diện";
-"prefs.misc.respring.subtitle" = "Hãy khởi động lại giao diện sau khi thay đổi nếu bạn đang ở iOS 16 trở lên vì cập nhật trực tiếp vẫn bị lỗi.";
+"prefs.misc.respring.title" = "Respring";
+"prefs.misc.respring.subtitle" = "Hãy respring sau khi thay đổi nếu bạn đang ở iOS 16 trở lên vì cập nhật trực tiếp vẫn bị lỗi.";
 "prefs.misc.about.title" = "Tùy chọn khác";
 "prefs.misc.about.subtitle" = "Ngôn ngữ, thông tin, phiên bản, donate, v.v.";
 "prefs.misc.options_section.title" = "Thứ khác";
