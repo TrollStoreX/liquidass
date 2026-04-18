@@ -292,9 +292,10 @@ static void LGWidgetsPrefsChanged(CFNotificationCenterRef center,
 %end
 
 %ctor {
-    if (!LGIsSpringBoardProcess()) return;
-    LGObservePreferenceChanges(^{
-        LGWidgetsPrefsChanged(NULL, NULL, NULL, NULL, NULL);
-    });
-    %init(LGWidgetsSpringBoard);
+    if (LGIsSpringBoardProcess()) {
+        LGObservePreferenceChanges(^{
+            LGWidgetsPrefsChanged(NULL, NULL, NULL, NULL, NULL);
+        });
+        %init(LGWidgetsSpringBoard);
+    }
 }

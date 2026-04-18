@@ -42,9 +42,19 @@ static NSString *LGLogFilePath(void) {
     return sPath;
 }
 
+static void LGPrepareLogFileForProcess(void) {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        NSString *path = LGLogFilePath();
+        if (!path.length) return;
+        [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
+    });
+}
+
 static void LGAppendLogLine(NSString *line) {
     NSString *path = LGLogFilePath();
     if (!path.length || !line.length) return;
+    LGPrepareLogFileForProcess();
 
     static dispatch_queue_t sLogQueue;
     static dispatch_once_t onceToken;
