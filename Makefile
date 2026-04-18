@@ -63,6 +63,8 @@ endif
 		echo "No prefs.app_name found; skipping label update"; \
 	fi
 
+$(THEOS_STAGING_DIR)/DEBIAN/control: $(PWD)/control
+
 remove::
 	@rm -f /opt/simject/$(TWEAK_NAME).dylib /opt/simject/$(TWEAK_NAME).plist
 	@[ ! -d /opt/simject/PreferenceBundles/LiquidAssPrefs.bundle ] || rm -rf /opt/simject/PreferenceBundles/LiquidAssPrefs.bundle
