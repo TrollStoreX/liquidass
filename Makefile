@@ -1,4 +1,3 @@
-
 ifeq ($(filter sim,$(MAKECMDGOALS)),sim)
 export TARGET ?= simulator:clang:latest:14.0
 export ARCHS ?= x86_64
