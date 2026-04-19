@@ -126,7 +126,6 @@
 "prefs.misc.language.subtitle" = "选择此设置界面的语言";
 "prefs.misc.experimental.title" = "实验性功能";
 "prefs.misc.experimental.subtitle" = "渲染方式及实验性功能";
-"prefs.misc.experimental.page_subtitle" = "每个界面的渲染方式及其他实验性功能";
 "prefs.misc.app_library_composite.title" = "资源库示例图标";
 "prefs.misc.app_library_composite.subtitle" = "在资源库中同时采样主屏幕图标，而不仅是壁纸效果接近 iOS 26，但在某些布局下可能显示异常";
 "prefs.misc.debug_logging.title" = "调试日志";
@@ -136,8 +135,6 @@
 "prefs.tint_override.system.title" = "跟随系统";
 "prefs.tint_override.light.title" = "强制浅色模式";
 "prefs.tint_override.dark.title" = "强制深色模式";
-"prefs.misc.lockscreen_clock.title" = "锁屏时间";
-"prefs.misc.lockscreen_clock.subtitle" = "开启自定义锁屏的玻璃风格时间";
 "prefs.misc.settings_controls.title" = "设置滑块与开关";
 "prefs.misc.settings_controls.subtitle" = "[实验性] 在设置应用中启用自定义液态控件";
 "prefs.rendering.snapshot.title" = "快照";

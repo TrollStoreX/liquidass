@@ -127,7 +127,6 @@
 "prefs.misc.options_section.subtitle" = "Các tính năng thử nghiệm và vài tùy chọn khác.";
 "prefs.misc.experimental.title" = "Thử nghiệm";
 "prefs.misc.experimental.subtitle" = "Phương thức kết xuất và các tính năng chưa ổn định.";
-"prefs.misc.experimental.page_subtitle" = "Phương thức kết xuất theo từng bề mặt và các tính năng thử nghiệm khác.";
 "prefs.misc.language.title" = "Ngôn ngữ";
 "prefs.misc.language.subtitle" = "Chọn ngôn ngữ cho giao diện tuỳ chọn này.";
 "prefs.misc.app_library_composite.title" = "AL lấy mẫu cả icon app";
@@ -139,7 +138,5 @@
 "prefs.tint_override.system.title" = "Theo hệ thống";
 "prefs.tint_override.light.title" = "Buộc tint sáng";
 "prefs.tint_override.dark.title" = "Buộc tint tối";
-"prefs.misc.lockscreen_clock.title" = "Đồng hồ màn hình khóa";
-"prefs.misc.lockscreen_clock.subtitle" = "Bật đồng hồ kính tùy chỉnh cho màn hình khóa.";
 "prefs.misc.settings_controls.title" = "Thanh trượt và công tắc trong Cài đặt";
 "prefs.misc.settings_controls.subtitle" = "[THỬ NGHIỆM] Bật các điều khiển liquid tùy chỉnh trong ứng dụng Cài đặt.";

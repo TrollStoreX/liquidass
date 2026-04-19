@@ -39,13 +39,10 @@
 "prefs.misc.app_library_composite.title"="資料庫合成圖示";
 "prefs.misc.debug_logging.subtitle"="啟用寫入 /tmp/LiquidAss.log 的詳細診斷記錄";
 "prefs.misc.debug_logging.title"="除錯記錄";
-"prefs.misc.experimental.page_subtitle"="各介面獨立的算繪方式及其他實驗性功能。";
 "prefs.misc.experimental.subtitle"="算繪方式與不穩定功能。";
 "prefs.misc.experimental.title"="實驗性功能";
 "prefs.misc.language.subtitle"="選擇此設定介面的語言";
 "prefs.misc.language.title"="語言";
-"prefs.misc.lockscreen_clock.subtitle"="啟用自訂鎖定畫面玻璃時鐘。";
-"prefs.misc.lockscreen_clock.title"="鎖定畫面時鐘";
 "prefs.misc.options_section.subtitle"="實驗性功能及其他內容";
 "prefs.misc.options_section.title"="額外內容";
 "prefs.misc.respring.subtitle"="在 iOS 16 及以上系統中，建議每次更改後執行一次重新啟動主畫面，因為即時更新可能會有問題";

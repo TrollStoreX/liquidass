@@ -537,10 +537,7 @@ NSArray<NSDictionary *> *LGLockscreenItems(void) {
         LGGlassSpecularSetting(@"LockscreenQuickActions.SpecularOpacity", 0.6, 0.0, 1.0, 2),
         LGGlassQualitySetting(@"LockscreenQuickActions.WallpaperScale", 0.5, 0.1, 1.0, 2),
         LGSectionSetting(LGLocalized(@"prefs.section.lockscreen_clock.title"), LGLocalized(@"prefs.section.lockscreen_clock.subtitle")),
-        LGSwitchSetting(@"Lockscreen.Clock.Enabled",
-                        LGLocalized(@"prefs.misc.lockscreen_clock.title"),
-                        LGLocalized(@"prefs.misc.lockscreen_clock.subtitle"),
-                        NO),
+        LGGlassEnabledSetting(@"Lockscreen.Clock.Enabled", NO),
     ]];
 
     [items addObject:LGGlassBezelSetting(@"Lockscreen.Clock.BezelWidth", 24.0, 0.0, 50.0, 1)];

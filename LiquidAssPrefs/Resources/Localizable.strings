@@ -127,7 +127,6 @@
 "prefs.misc.options_section.subtitle" = "Experimental features and other stuff.";
 "prefs.misc.experimental.title" = "Experimental";
 "prefs.misc.experimental.subtitle" = "Rendering methods and unstable features.";
-"prefs.misc.experimental.page_subtitle" = "Per-surface rendering methods and other experimental features.";
 "prefs.misc.language.title" = "Language";
 "prefs.misc.language.subtitle" = "Select the language for this preferences UI.";
 "prefs.misc.app_library_composite.title" = "AL samples app icons";
@@ -139,7 +138,5 @@
 "prefs.tint_override.system.title" = "Follow System";
 "prefs.tint_override.light.title" = "Force Light Tint";
 "prefs.tint_override.dark.title" = "Force Dark Tint";
-"prefs.misc.lockscreen_clock.title" = "Lockscreen Clock";
-"prefs.misc.lockscreen_clock.subtitle" = "Enable the custom lockscreen glass clock.";
 "prefs.misc.settings_controls.title" = "Settings Sliders and Switches";
 "prefs.misc.settings_controls.subtitle" = "[EXPERIMENTAL] Enable the custom liquid controls inside the Settings app.";

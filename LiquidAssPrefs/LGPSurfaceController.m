@@ -46,7 +46,7 @@
         _items = [LGMoreOptionsItems() copy];
     } else if ([_screenIdentifier isEqualToString:@"Experimental"]) {
         _screenTitle = [LGLocalized(@"prefs.misc.experimental.title") copy];
-        _screenSubtitle = [LGLocalized(@"prefs.misc.experimental.page_subtitle") copy];
+        _screenSubtitle = [LGLocalized(@"prefs.misc.experimental.subtitle") copy];
         _accentColor = [UIColor systemOrangeColor];
         _items = [LGExperimentalItems() copy];
     }
@@ -145,7 +145,7 @@
 
 - (void)openExperimental {
     LGPSurfaceController *controller = [[LGPSurfaceController alloc] initWithTitle:LGLocalized(@"prefs.misc.experimental.title")
-                                                                          subtitle:LGLocalized(@"prefs.misc.experimental.page_subtitle")
+                                                                          subtitle:LGLocalized(@"prefs.misc.experimental.subtitle")
                                                                          tintColor:[UIColor systemOrangeColor]
                                                                         identifier:@"Experimental"
                                                                              items:LGExperimentalItems()];
