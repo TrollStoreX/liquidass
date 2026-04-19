@@ -8,8 +8,8 @@ export TARGET ?= iphone:clang:latest:14.0
 export ARCHS ?= arm64 arm64e
 endif
 
+INSTALL_TARGET_PROCESSES = SpringBoard chronod WidgetRenderer_Default WidgetRenderer_CarPlay
 include $(THEOS)/makefiles/common.mk
-include ./locatesim.mk
 
 TWEAK_NAME = liquidass
 HOOK_FILES := $(wildcard Hooks/*.x) $(wildcard Hooks/Lockscreen/*.x)
@@ -22,6 +22,7 @@ $(TWEAK_NAME)_FRAMEWORKS = UIKit MetalKit
 
 include $(THEOS)/makefiles/tweak.mk
 SUBPROJECTS += LiquidAssPrefs
+SUBPROJECTS += LiquidAssRWB
 include $(THEOS_MAKE_PATH)/aggregate.mk
 
 .PHONY: sim remove release
@@ -30,6 +31,9 @@ sim:: all
 	@rm -f /opt/simject/$(TWEAK_NAME).dylib
 	@cp -v .theos/obj/iphone_simulator/debug/$(TWEAK_NAME).dylib /opt/simject
 	@cp -v $(PWD)/$(TWEAK_NAME).plist /opt/simject
+	@rm -f /opt/simject/LiquidAssRWB.dylib
+	@cp -v .theos/obj/iphone_simulator/debug/LiquidAssRWB.dylib /opt/simject
+	@cp -v $(PWD)/LiquidAssRWB/LiquidAssRWB.plist /opt/simject
 	@mkdir -p /opt/simject/PreferenceLoader/Preferences
 	@mkdir -p /opt/simject/PreferenceBundles
 	@rm -rf /opt/simject/PreferenceBundles/LiquidAssPrefs.bundle
@@ -38,6 +42,8 @@ sim:: all
 	cp -v $(PWD)/LiquidAssPrefs/Resources/entry.plist /opt/simject/PreferenceLoader/Preferences/LiquidAssPrefs.plist; \
 	/usr/libexec/PlistBuddy -c "Set :entry:label $$APP_NAME" /opt/simject/PreferenceLoader/Preferences/LiquidAssPrefs.plist; \
 	/usr/libexec/PlistBuddy -c "Set :entry:label $$APP_NAME" /opt/simject/PreferenceBundles/LiquidAssPrefs.bundle/entry.plist
+	@resim
+	@pkill -9 -f 'CoreSimulator/.*/ChronoCore.framework/Support/chronod' || true
 
 before-package::
 	@APP_NAME=$$(sed -n 's/^"prefs.app_name" = "\(.*\)";/\1/p' $(PWD)/LiquidAssPrefs/Resources/Localizable.strings | head -n 1); \
@@ -50,6 +56,7 @@ before-package::
 
 remove::
 	@rm -f /opt/simject/$(TWEAK_NAME).dylib /opt/simject/$(TWEAK_NAME).plist
+	@rm -f /opt/simject/LiquidAssRWB.dylib /opt/simject/LiquidAssRWB.plist
 	@[ ! -d /opt/simject/PreferenceBundles/LiquidAssPrefs.bundle ] || rm -rf /opt/simject/PreferenceBundles/LiquidAssPrefs.bundle
 	@[ ! -f /opt/simject/PreferenceLoader/Preferences/LiquidAssPrefs.plist ] || rm -f /opt/simject/PreferenceLoader/Preferences/LiquidAssPrefs.plist
 

@@ -32,6 +32,18 @@ LG_FLOAT_PREF_FUNC(LGWidgetWallpaperScale, "Widgets.WallpaperScale", 0.5)
 LG_FLOAT_PREF_FUNC(LGWidgetLightTintAlpha, "Widgets.LightTintAlpha", 0.1)
 LG_FLOAT_PREF_FUNC(LGWidgetDarkTintAlpha, "Widgets.DarkTintAlpha", 0.3)
 
+@interface CHSWidget : NSObject
+@property (nonatomic, copy, readonly) NSString *extensionBundleIdentifier;
+@end
+
+@interface CHUISWidgetHostViewController : UIViewController
+@property (nonatomic, copy) CHSWidget *widget;
+@end
+
+@interface CHUISAvocadoHostViewController : UIViewController
+@property (nonatomic, copy) CHSWidget *widget;
+@end
+
 static BOOL LGViewBelongsToWidgetStack(UIView *view) {
     if (!view) return NO;
 
@@ -63,6 +75,33 @@ static void LGStopWidgetDisplayLink(void) {
 
 static UIColor *widgetTintColorForView(UIView *view) {
     return LGDefaultTintColorForViewWithOverrideKey(view, LGWidgetLightTintAlpha(), LGWidgetDarkTintAlpha(), @"Widgets.TintOverrideMode");
+}
+
+static BOOL LGWidgetViewContainsDescendantNamed(UIView *view, NSString *className, NSInteger depth) {
+    if (!view || depth > 24) return NO;
+    for (UIView *subview in view.subviews) {
+        if ([NSStringFromClass(subview.class) isEqualToString:className]) return YES;
+        if (LGWidgetViewContainsDescendantNamed(subview, className, depth + 1)) return YES;
+    }
+    return NO;
+}
+
+static UIView *LGWidgetAncestorContainerHostForView(UIView *view) {
+    UIView *ancestor = view;
+    NSInteger depth = 0;
+    while (ancestor && depth < 12) {
+        if ([NSStringFromClass(ancestor.class) isEqualToString:@"UIView"] &&
+            LGResponderChainContainsClassNamed(ancestor, @"SBHWidgetStackViewController") &&
+            LGWidgetViewContainsDescendantNamed(ancestor, @"BSUIScrollView", 0) &&
+            !LGWidgetViewContainsDescendantNamed(ancestor, @"MTMaterialView", 0) &&
+            ancestor.bounds.size.width >= 120.0 &&
+            ancestor.bounds.size.height >= 120.0) {
+            return ancestor;
+        }
+        ancestor = ancestor.superview;
+        depth++;
+    }
+    return nil;
 }
 
 static void removeWidgetOverlays(UIView *view) {
@@ -113,26 +152,50 @@ static void ensureWidgetTintOverlay(UIView *view) {
                                view.layer.cornerRadius,
                                view.layer,
                                NO);
-    [view bringSubviewToFront:tint];
+    LiquidGlassView *glass = objc_getAssociatedObject(view, kWidgetGlassKey);
+    UIView *contentAnchor = nil;
+    for (UIView *subview in view.subviews) {
+        if (subview == glass || subview == tint) continue;
+        contentAnchor = subview;
+        break;
+    }
+    if (contentAnchor) {
+        [view insertSubview:tint belowSubview:contentAnchor];
+    } else if (glass) {
+        [view insertSubview:tint aboveSubview:glass];
+    } else {
+        [view sendSubviewToBack:tint];
+    }
 }
 
-static BOOL LGIsWidgetMaterialView(UIView *view) {
+static BOOL LGIsWidgetGlassHostView(UIView *view) {
     if (!view.window) return NO;
-    if (![NSStringFromClass([view class]) isEqualToString:@"MTMaterialView"]) return NO;
     if (!LGResponderChainContainsClassNamed(view, @"SBHWidgetStackViewController")) return NO;
 
-    // Keep this scoped to the large widget material background, not auxiliary controls.
-    if (LGHasAncestorClassNamed(view, @"WGShortLookStyleButton")) return NO;
-    if ([view isKindOfClass:[UIControl class]]) return NO;
-    if ([view isKindOfClass:[UILabel class]]) return NO;
-    if ([view isKindOfClass:[UIImageView class]]) return NO;
-    if ([view isKindOfClass:[UIScrollView class]]) return NO;
-    if (view.bounds.size.width < 120.0 || view.bounds.size.height < 120.0) return NO;
+    NSString *className = NSStringFromClass(view.class);
+    if ([className isEqualToString:@"MTMaterialView"]) {
+        // Keep this scoped to the large widget material background, not auxiliary controls.
+        if (LGHasAncestorClassNamed(view, @"WGShortLookStyleButton")) return NO;
+        if ([view isKindOfClass:[UIControl class]]) return NO;
+        if ([view isKindOfClass:[UILabel class]]) return NO;
+        if ([view isKindOfClass:[UIImageView class]]) return NO;
+        if ([view isKindOfClass:[UIScrollView class]]) return NO;
+        if (view.bounds.size.width < 120.0 || view.bounds.size.height < 120.0) return NO;
+        return YES;
+    }
 
-    return YES;
+    if ([className isEqualToString:@"UIView"] &&
+        LGWidgetViewContainsDescendantNamed(view, @"BSUIScrollView", 0) &&
+        !LGWidgetViewContainsDescendantNamed(view, @"MTMaterialView", 0) &&
+        view.bounds.size.width >= 120.0 &&
+        view.bounds.size.height >= 120.0) {
+        return YES;
+    }
+
+    return NO;
 }
 
-static void LGPrepareWidgetMaterialView(UIView *view) {
+static void LGPrepareWidgetGlassHostView(UIView *view) {
     LGRememberWidgetOriginalState(view);
     view.layer.cornerRadius = LGWidgetCornerRadius();
     if (@available(iOS 13.0, *))
@@ -140,7 +203,7 @@ static void LGPrepareWidgetMaterialView(UIView *view) {
     view.clipsToBounds = YES;
 }
 
-static void LGInjectIntoWidgetMaterialView(UIView *view) {
+static void LGInjectIntoWidgetGlassHostView(UIView *view) {
     if (!LGWidgetEnabled()) {
         removeWidgetOverlays(view);
         LGRestoreWidgetOriginalState(view);
@@ -156,7 +219,7 @@ static void LGInjectIntoWidgetMaterialView(UIView *view) {
         return;
     }
 
-    LGPrepareWidgetMaterialView(view);
+    LGPrepareWidgetGlassHostView(view);
 
     if (!glass) {
         glass = [[LiquidGlassView alloc]
@@ -194,6 +257,7 @@ static void LGInjectIntoWidgetMaterialView(UIView *view) {
         LGRestoreWidgetOriginalState(view);
         return;
     }
+    [view sendSubviewToBack:glass];
     ensureWidgetTintOverlay(view);
     dispatch_async(dispatch_get_main_queue(), ^{
         if (view.window) ensureWidgetTintOverlay(view);
@@ -204,9 +268,9 @@ static void LGWidgetsRefreshAllHosts(void) {
     UIApplication *app = UIApplication.sharedApplication;
     void (^refreshWindow)(UIWindow *) = ^(UIWindow *window) {
         LGTraverseViews(window, ^(UIView *view) {
-            if (!LGIsWidgetMaterialView(view)) return;
-            LGPrepareWidgetMaterialView(view);
-            LGInjectIntoWidgetMaterialView(view);
+            if (!LGIsWidgetGlassHostView(view)) return;
+            LGPrepareWidgetGlassHostView(view);
+            LGInjectIntoWidgetGlassHostView(view);
         });
     };
     if (@available(iOS 13.0, *)) {
@@ -231,6 +295,68 @@ static void LGWidgetsPrefsChanged(CFNotificationCenterRef center,
 
 %group LGWidgetsSpringBoard
 
+%hook CHUISAvocadoHostViewController
+
+- (void)_updateBackgroundMaterialAndColor {
+    CHSWidget *widget = self.widget;
+    if (widget.extensionBundleIdentifier.length && LGWidgetEnabled()) {
+        LGDebugLog(@"widget springboard suppressed avocado material widget=%@", widget.extensionBundleIdentifier);
+        return;
+    }
+    %orig;
+}
+
+- (id)screenshotManager {
+    CHSWidget *widget = self.widget;
+    if (widget.extensionBundleIdentifier.length && LGWidgetEnabled()) {
+        LGDebugLog(@"widget springboard suppressed avocado screenshot widget=%@", widget.extensionBundleIdentifier);
+        return nil;
+    }
+    return %orig;
+}
+
+%end
+
+%hook CHUISWidgetHostViewController
+
+- (void)_updateBackgroundMaterialAndColor {
+    CHSWidget *widget = self.widget;
+    if (widget.extensionBundleIdentifier.length && LGWidgetEnabled()) {
+        LGDebugLog(@"widget springboard suppressed host material widget=%@", widget.extensionBundleIdentifier);
+        return;
+    }
+    %orig;
+}
+
+- (void)_updatePersistedSnapshotContent {
+    CHSWidget *widget = self.widget;
+    if (widget.extensionBundleIdentifier.length && LGWidgetEnabled()) {
+        LGDebugLog(@"widget springboard suppressed host snapshot widget=%@", widget.extensionBundleIdentifier);
+        return;
+    }
+    %orig;
+}
+
+- (void)_updatePersistedSnapshotContentIfNecessary {
+    CHSWidget *widget = self.widget;
+    if (widget.extensionBundleIdentifier.length && LGWidgetEnabled()) {
+        LGDebugLog(@"widget springboard suppressed host snapshot-if-needed widget=%@", widget.extensionBundleIdentifier);
+        return;
+    }
+    %orig;
+}
+
+- (id)_snapshotImageFromURL:(id)arg1 {
+    CHSWidget *widget = self.widget;
+    if (widget.extensionBundleIdentifier.length && LGWidgetEnabled()) {
+        LGDebugLog(@"widget springboard suppressed host snapshot image widget=%@", widget.extensionBundleIdentifier);
+        return nil;
+    }
+    return %orig;
+}
+
+%end
+
 %hook MTMaterialView
 
 - (void)didMoveToWindow {
@@ -248,8 +374,8 @@ static void LGWidgetsPrefsChanged(CFNotificationCenterRef center,
         return;
     }
 
-    if (!LGIsWidgetMaterialView(self_)) return;
-    LGInjectIntoWidgetMaterialView(self_);
+    if (!LGIsWidgetGlassHostView(self_)) return;
+    LGInjectIntoWidgetGlassHostView(self_);
     if (![objc_getAssociatedObject(self_, kWidgetAttachedKey) boolValue]) {
         objc_setAssociatedObject(self_, kWidgetAttachedKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         sWidgetCount++;
@@ -260,7 +386,7 @@ static void LGWidgetsPrefsChanged(CFNotificationCenterRef center,
 - (void)layoutSubviews {
     %orig;
     UIView *self_ = (UIView *)self;
-    if (!LGIsWidgetMaterialView(self_)) return;
+    if (!LGIsWidgetGlassHostView(self_)) return;
     if (!LGWidgetEnabled()) {
         removeWidgetOverlays(self_);
         LGRestoreWidgetOriginalState(self_);
@@ -285,6 +411,44 @@ static void LGWidgetsPrefsChanged(CFNotificationCenterRef center,
     %orig;
     if (!LGViewBelongsToWidgetStack((UIView *)self)) return;
     if (!sWidgetLink) LG_updateRegisteredGlassViews(LGUpdateGroupWidgets);
+}
+
+%end
+
+%hook BSUIScrollView
+
+- (void)didMoveToWindow {
+    %orig;
+    UIView *host = LGWidgetAncestorContainerHostForView((UIView *)self);
+    if (!host) return;
+
+    if (!LGWidgetEnabled()) {
+        removeWidgetOverlays(host);
+        LGRestoreWidgetOriginalState(host);
+        return;
+    }
+
+    LGInjectIntoWidgetGlassHostView(host);
+    if (![objc_getAssociatedObject(host, kWidgetAttachedKey) boolValue]) {
+        objc_setAssociatedObject(host, kWidgetAttachedKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        sWidgetCount++;
+        LGStartWidgetDisplayLink();
+    }
+}
+
+- (void)layoutSubviews {
+    %orig;
+    UIView *host = LGWidgetAncestorContainerHostForView((UIView *)self);
+    if (!host) return;
+    if (!LGIsWidgetGlassHostView(host)) return;
+    if (!LGWidgetEnabled()) {
+        removeWidgetOverlays(host);
+        LGRestoreWidgetOriginalState(host);
+        return;
+    }
+    ensureWidgetTintOverlay(host);
+    LiquidGlassView *glass = objc_getAssociatedObject(host, kWidgetGlassKey);
+    [glass updateOrigin];
 }
 
 %end
