@@ -32,6 +32,8 @@ static NSString * const LGPrefsDidReloadInProcessNotification = @"dylv.liquidass
 static NSDictionary<NSString *, id> *sLGCachedPreferences = nil;
 static os_unfair_lock sLGPrefsLock = OS_UNFAIR_LOCK_INIT;
 static dispatch_once_t sLGPrefsSetupOnce;
+static const unsigned long long kLGMaxLogFileBytes = 1024 * 1024;
+static const unsigned long long kLGLogRetentionBytes = 512 * 1024;
 
 static NSString *LGLogFilePath(void) {
     static NSString *sPath = nil;
@@ -83,6 +85,39 @@ static void LGAppendLogLine(NSString *line) {
         NSData *data = [line dataUsingEncoding:NSUTF8StringEncoding];
         if (!data.length) {
             [handle closeAndReturnError:nil];
+            return;
+        }
+
+        NSDictionary<NSFileAttributeKey, id> *attributes = [fm attributesOfItemAtPath:path error:nil];
+        unsigned long long fileSize = [attributes[NSFileSize] unsignedLongLongValue];
+        if (fileSize + data.length > kLGMaxLogFileBytes) {
+            [handle closeAndReturnError:nil];
+
+            NSError *rewriteError = nil;
+            NSData *existingData = [NSData dataWithContentsOfFile:path options:0 error:&rewriteError];
+            if (!existingData && rewriteError) {
+                NSLog(@"[LiquidAss] log file read failed %@", rewriteError.localizedDescription ?: @"unknown");
+            }
+
+            NSData *retainedData = existingData;
+            if (existingData.length > kLGLogRetentionBytes) {
+                NSRange tailRange = NSMakeRange((NSUInteger)(existingData.length - kLGLogRetentionBytes),
+                                               (NSUInteger)kLGLogRetentionBytes);
+                retainedData = [existingData subdataWithRange:tailRange];
+            }
+            if (![retainedData isKindOfClass:[NSData class]]) {
+                retainedData = NSData.data;
+            }
+
+            NSMutableData *rotatedData = [NSMutableData dataWithCapacity:retainedData.length + data.length];
+            if (retainedData.length) [rotatedData appendData:retainedData];
+            [rotatedData appendData:data];
+
+            NSError *writeError = nil;
+            [rotatedData writeToFile:path options:NSDataWritingAtomic error:&writeError];
+            if (writeError) {
+                NSLog(@"[LiquidAss] log file rotation failed %@", writeError.localizedDescription ?: @"unknown");
+            }
             return;
         }
 
@@ -324,6 +359,13 @@ NSNumber *LGBlurSettingKey(CGFloat blur) {
 @implementation LGBlurVariant
 @end
 
+@interface LGZeroCopyBridge ()
+@property (nonatomic, strong) id<MTLDevice> device;
+@property (nonatomic, assign) CVMetalTextureCacheRef textureCache;
+@property (nonatomic, assign) CVPixelBufferRef pixelBuffer;
+@property (nonatomic, assign) CVMetalTextureRef cvTexture;
+@end
+
 @implementation LGZeroCopyBridge
 
 - (instancetype)initWithDevice:(id<MTLDevice>)device {
@@ -422,6 +464,14 @@ NSNumber *LGBlurSettingKey(CGFloat blur) {
     CVPixelBufferUnlockBaseAddress(_pixelBuffer, 0);
     CVMetalTextureCacheFlush(_textureCache, 0);
     return CVMetalTextureGetTexture(_cvTexture);
+}
+
+- (size_t)bufferWidth {
+    return _pixelBuffer ? CVPixelBufferGetWidth(_pixelBuffer) : 0;
+}
+
+- (size_t)bufferHeight {
+    return _pixelBuffer ? CVPixelBufferGetHeight(_pixelBuffer) : 0;
 }
 
 @end

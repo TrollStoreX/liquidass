@@ -163,3 +163,15 @@ void LGStopDisplayLink(CADisplayLink *__strong *linkStorage,
     *linkStorage = nil;
     if (driverStorage) *driverStorage = nil;
 }
+
+void LGStartDisplayLinkState(LGDisplayLinkState *state,
+                             NSInteger preferredFPS,
+                             dispatch_block_t tickBlock) {
+    if (!state) return;
+    LGStartDisplayLink(&state->link, &state->driver, preferredFPS, tickBlock);
+}
+
+void LGStopDisplayLinkState(LGDisplayLinkState *state) {
+    if (!state) return;
+    LGStopDisplayLink(&state->link, &state->driver);
+}

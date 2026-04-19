@@ -69,13 +69,11 @@ NSNumber *LGBlurSettingKey(CGFloat blur);
 @end
 
 @interface LGZeroCopyBridge : NSObject
-@property (nonatomic, strong) id<MTLDevice> device;
-@property (nonatomic, assign) CVMetalTextureCacheRef textureCache;
-@property (nonatomic, assign) CVPixelBufferRef pixelBuffer;
-@property (nonatomic, assign) CVMetalTextureRef cvTexture;
 - (instancetype)initWithDevice:(id<MTLDevice>)device;
 - (BOOL)setupBufferWithWidth:(size_t)width height:(size_t)height;
 - (id<MTLTexture>)renderWithActions:(void (^)(CGContextRef context))actions;
+- (size_t)bufferWidth;
+- (size_t)bufferHeight;
 @end
 
 id<MTLLibrary> LGCreateGlassLibrary(id<MTLDevice> device, NSError **error);

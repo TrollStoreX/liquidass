@@ -14,9 +14,7 @@ typedef NS_ENUM(NSInteger, LGDockMode) {
 
 static void LGDockRefreshAllHosts(void);
 
-static CADisplayLink *sDockLink = nil;
-static id sDockTicker = nil;
-static NSInteger sDockCount = 0;
+static LGDisplayLinkState sDockDisplayLinkState = {0};
 
 LG_ENABLED_BOOL_PREF_FUNC(LGDockEnabled, "Dock.Enabled", YES)
 LG_FLOAT_PREF_FUNC(LGDockCornerRadiusHomeButton, "Dock.CornerRadiusHomeButton", 0.0)
@@ -101,14 +99,14 @@ static LGDockMode LGResolveDockModeForView(UIView *view) {
 }
 
 static void startDockDisplayLink(void) {
-    LGStartDisplayLink(&sDockLink, &sDockTicker, LGPreferredFramesPerSecondForKey(@"Homescreen.FPS", 30), ^{
+    LGStartDisplayLinkState(&sDockDisplayLinkState, LGPreferredFramesPerSecondForKey(@"Homescreen.FPS", 30), ^{
         if (LG_prefersLiveCapture(@"Dock.RenderingMode")) LGDockRefreshAllHosts();
         else LG_updateRegisteredGlassViews(LGUpdateGroupDock);
     });
 }
 
 static void stopDockDisplayLink(void) {
-    LGStopDisplayLink(&sDockLink, &sDockTicker);
+    LGStopDisplayLinkState(&sDockDisplayLinkState);
 }
 
 static BOOL LGDockNeedsLegacyPadding(LGDockMode mode) {
@@ -349,7 +347,7 @@ static void LGDockPrefsChanged(CFNotificationCenterRef center,
     });
     if (![objc_getAssociatedObject(self_, kDockAttachedKey) boolValue]) {
         objc_setAssociatedObject(self_, kDockAttachedKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        sDockCount++;
+        sDockDisplayLinkState.activeCount++;
         startDockDisplayLink();
     }
 }
@@ -378,7 +376,7 @@ static void LGDockPrefsChanged(CFNotificationCenterRef center,
             ensureDockTintOverlay(self_);
             if (![objc_getAssociatedObject(self_, kDockAttachedKey) boolValue]) {
                 objc_setAssociatedObject(self_, kDockAttachedKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-                sDockCount++;
+                sDockDisplayLinkState.activeCount++;
                 startDockDisplayLink();
             }
         }
@@ -397,8 +395,8 @@ static void LGDockPrefsChanged(CFNotificationCenterRef center,
     if (!newWindow && [objc_getAssociatedObject(self_, kDockAttachedKey) boolValue]) {
         objc_setAssociatedObject(self_, kDockAttachedKey, nil, OBJC_ASSOCIATION_ASSIGN);
         objc_setAssociatedObject(self_, kDockModeKey, nil, OBJC_ASSOCIATION_ASSIGN);
-        sDockCount = MAX(0, sDockCount - 1);
-        if (sDockCount == 0) stopDockDisplayLink();
+        sDockDisplayLinkState.activeCount = MAX(0, sDockDisplayLinkState.activeCount - 1);
+        if (sDockDisplayLinkState.activeCount == 0) stopDockDisplayLink();
     }
     %orig;
 }

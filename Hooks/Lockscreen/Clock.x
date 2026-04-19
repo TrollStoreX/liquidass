@@ -34,7 +34,7 @@ static void LGSetLayerTreeOpacity(CALayer *layer, float opacity) {
 
 static BOOL LGClockEnabled(void) {
     return LGLockscreenEnabled()
-        && LG_prefBool(@"Lockscreen.Clock.Enabled", NO);
+        && LG_prefBool(@"Lockscreen.Clock.Enabled", YES);
 }
 
 static BOOL LGIsModernClockHost(UIView *view) {

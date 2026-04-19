@@ -9,9 +9,7 @@ static void *kLockAttachedKey = &kLockAttachedKey;
 static void *kLockTintKey = &kLockTintKey;
 static void *kLockBackdropViewKey = &kLockBackdropViewKey;
 
-static CADisplayLink *sLockLink = nil;
-static id sLockTicker = nil;
-static NSInteger sLockCount = 0;
+static LGDisplayLinkState sLockDisplayLinkState = {0};
 
 static UIView *LGLockscreenHostContainer(UIView *host) {
     if (![host isKindOfClass:[UIVisualEffectView class]]) return host;
@@ -66,7 +64,7 @@ static void LGEnsureLockscreenTintOverlay(UIView *host,
 
 static void LGStartLockDisplayLink(void) {
     if (!LGLockscreenEnabled()) return;
-    LGStartDisplayLink(&sLockLink, &sLockTicker, LGPreferredFramesPerSecondForKey(@"Lockscreen.FPS", 30), ^{
+    LGStartDisplayLinkState(&sLockDisplayLinkState, LGPreferredFramesPerSecondForKey(@"Lockscreen.FPS", 30), ^{
         if (LG_prefersLiveCapture(@"Lockscreen.RenderingMode") ||
             LG_prefersLiveCapture(@"LockscreenQuickActions.RenderingMode")) {
             LGLockscreenRefreshAllHosts();
@@ -77,7 +75,7 @@ static void LGStartLockDisplayLink(void) {
 }
 
 static void LGStopLockDisplayLink(void) {
-    LGStopDisplayLink(&sLockLink, &sLockTicker);
+    LGStopDisplayLinkState(&sLockDisplayLinkState);
 }
 
 void LGInvalidateLockscreenSnapshotCache(void) {
@@ -107,8 +105,8 @@ void LGDetachLockHostIfNeeded(UIView *view) {
     LGAssertMainThread();
     if (![objc_getAssociatedObject(view, kLockAttachedKey) boolValue]) return;
     objc_setAssociatedObject(view, kLockAttachedKey, nil, OBJC_ASSOCIATION_ASSIGN);
-    sLockCount = MAX(0, sLockCount - 1);
-    if (sLockCount == 0) LGStopLockDisplayLink();
+    sLockDisplayLinkState.activeCount = MAX(0, sLockDisplayLinkState.activeCount - 1);
+    if (sLockDisplayLinkState.activeCount == 0) LGStopLockDisplayLink();
 }
 
 void LGRemoveLockscreenGlass(UIView *host) {
@@ -130,7 +128,7 @@ void LGAttachLockHostIfNeeded(UIView *view) {
     LGAssertMainThread();
     if ([objc_getAssociatedObject(view, kLockAttachedKey) boolValue]) return;
     objc_setAssociatedObject(view, kLockAttachedKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    sLockCount++;
+    sLockDisplayLinkState.activeCount++;
     LGStartLockDisplayLink();
 }
 

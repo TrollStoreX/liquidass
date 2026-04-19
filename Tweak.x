@@ -515,7 +515,7 @@ static UIImage *LG_decodeCPBitmapAtPath(NSString *path) {
         for (size_t x = 0; x < width; x++) {
             size_t srcOffset = (x * 4) + (y * lineSize * 4);
             size_t dstOffset = (x * 4) + (y * width * 4);
-            if (srcOffset + 3 >= payloadBytes) return nil;
+            if (srcOffset + 4 > payloadBytes) return nil;
             // cpbitmap stores BGRA; UIKit wants RGBA here.
             dst[dstOffset + 0] = bytes[srcOffset + 2];
             dst[dstOffset + 1] = bytes[srcOffset + 1];

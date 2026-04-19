@@ -45,7 +45,7 @@ static void LGHandleFolderOpenMaterialView(UIView *view, BOOL updateOnly);
 static BOOL LGIsPrimaryFolderOpenHost(UIView *view);
 static void LGStripFolderOpenTintFiltersFromLayerTree(CALayer *layer);
 
-static NSInteger sFolderCount = 0;
+static LGDisplayLinkState sFolderDisplayLinkState = {0};
 static NSUInteger sFolderStopGeneration = 0;
 LG_ENABLED_BOOL_PREF_FUNC(LGFolderOpenEnabled, "FolderOpen.Enabled", YES)
 LG_FLOAT_PREF_FUNC(LGFolderOpenCornerRadius, "FolderOpen.CornerRadius", 38.0)
@@ -156,12 +156,9 @@ static void ensureFolderOpenTintOverlay(UIView *view) {
     [view bringSubviewToFront:tint];
 }
 
-static CADisplayLink *sFolderLink = nil;
-static id sFolderTicker = nil;
-
 static void startFolderDisplayLink(void) {
     sFolderStopGeneration++;
-    LGStartDisplayLink(&sFolderLink, &sFolderTicker, LGPreferredFramesPerSecondForKey(@"Homescreen.FPS", 30), ^{
+    LGStartDisplayLinkState(&sFolderDisplayLinkState, LGPreferredFramesPerSecondForKey(@"Homescreen.FPS", 30), ^{
         if (LG_prefersLiveCapture(@"FolderOpen.RenderingMode")) LGFolderOpenRefreshAllHosts();
         else LG_updateRegisteredGlassViews(LGUpdateGroupFolderOpen);
     });
@@ -169,7 +166,7 @@ static void startFolderDisplayLink(void) {
 
 static void stopFolderDisplayLink(void) {
     sFolderStopGeneration++;
-    LGStopDisplayLink(&sFolderLink, &sFolderTicker);
+    LGStopDisplayLinkState(&sFolderDisplayLinkState);
 }
 
 static void scheduleFolderDisplayLinkStopIfIdle(void) {
@@ -177,7 +174,7 @@ static void scheduleFolderDisplayLinkStopIfIdle(void) {
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(kFolderOpenDisplayLinkGrace * NSEC_PER_SEC)),
                    dispatch_get_main_queue(), ^{
         if (generation != sFolderStopGeneration) return;
-        if (sFolderCount != 0) return;
+        if (sFolderDisplayLinkState.activeCount != 0) return;
         stopFolderDisplayLink();
     });
 }
@@ -224,8 +221,8 @@ static void LGDetachFolderOpenHost(UIView *view) {
     LGRestoreFolderOpenHost(view);
     if (![objc_getAssociatedObject(view, kFolderOpenAttachedKey) boolValue]) return;
     objc_setAssociatedObject(view, kFolderOpenAttachedKey, nil, OBJC_ASSOCIATION_ASSIGN);
-    sFolderCount = MAX(0, sFolderCount - 1);
-    if (sFolderCount == 0) scheduleFolderDisplayLinkStopIfIdle();
+    sFolderDisplayLinkState.activeCount = MAX(0, sFolderDisplayLinkState.activeCount - 1);
+    if (sFolderDisplayLinkState.activeCount == 0) scheduleFolderDisplayLinkStopIfIdle();
 }
 
 static void injectIntoOpenFolder(UIView *host) {
@@ -289,7 +286,7 @@ static void injectIntoOpenFolder(UIView *host) {
 
     if (![objc_getAssociatedObject(host, kFolderOpenAttachedKey) boolValue]) {
         objc_setAssociatedObject(host, kFolderOpenAttachedKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        sFolderCount++;
+        sFolderDisplayLinkState.activeCount++;
     }
     startFolderDisplayLink();
 }

@@ -57,6 +57,14 @@ static void ReloadPrefs(void) {
     RWBLog(@"reload enabled=%d maxWidth=%.1f maxHeight=%.1f", kIsEnabled, kMaxWidgetWidth, kMaxWidgetHeight);
 }
 
+static void RWBReloadPrefsCallback(CFNotificationCenterRef __unused center,
+                                   void * __unused observer,
+                                   CFStringRef __unused name,
+                                   const void * __unused object,
+                                   CFDictionaryRef __unused userInfo) {
+    ReloadPrefs();
+}
+
 @interface CHSWidget : NSObject
 @property (nonatomic, copy, readonly) NSString *extensionBundleIdentifier;
 @end
@@ -359,7 +367,7 @@ static BOOL ShouldHandleWidget(NSString *bundleIdentifier) {
 
     CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),
                                     NULL,
-                                    (CFNotificationCallback)ReloadPrefs,
+                                    RWBReloadPrefsCallback,
                                     CFSTR("dylv.liquidassprefs/Reload"),
                                     NULL,
                                     CFNotificationSuspensionBehaviorCoalesce);

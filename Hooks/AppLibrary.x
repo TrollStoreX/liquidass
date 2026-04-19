@@ -16,8 +16,7 @@ static void LGEnsureAppLibraryTintOverlay(UIView *host, CGFloat cornerRadius, UI
 static BOOL LGHandleSearchFieldMaterialView(UIView *view, BOOL updateOnly);
 static BOOL LGIsAppLibraryFocusIsolationMaterial(UIView *view);
 
-static CADisplayLink  *sAppLibLink   = nil;
-static id sAppLibTicker = nil;
+static LGDisplayLinkState sAppLibraryDisplayLinkState = {0};
 static void *kAppLibRetryKey = &kAppLibRetryKey;
 static void *kAppLibOriginalAlphaKey = &kAppLibOriginalAlphaKey;
 static void *kAppLibOriginalCornerRadiusKey = &kAppLibOriginalCornerRadiusKey;
@@ -162,7 +161,7 @@ static void LGScheduleFocusResanitize(UIView *view) {
 
 static void startAppLibDisplayLink(void) {
     if (!LGAnyAppLibraryGlassEnabled()) return;
-    LGStartDisplayLink(&sAppLibLink, &sAppLibTicker, LGPreferredFramesPerSecondForKey(@"AppLibrary.FPS", 30), ^{
+    LGStartDisplayLinkState(&sAppLibraryDisplayLinkState, LGPreferredFramesPerSecondForKey(@"AppLibrary.FPS", 30), ^{
         if (LG_prefersLiveCapture(@"AppLibrary.RenderingMode") ||
             LG_prefersLiveCapture(@"AppLibrary.Search.RenderingMode")) {
             LGAppLibraryRefreshAllHosts();
@@ -172,7 +171,7 @@ static void startAppLibDisplayLink(void) {
     });
 }
 static void stopAppLibDisplayLink(void) {
-    LGStopDisplayLink(&sAppLibLink, &sAppLibTicker);
+    LGStopDisplayLinkState(&sAppLibraryDisplayLinkState);
 }
 
 static void LGSyncAppLibraryDisplayLink(void) {
@@ -586,7 +585,7 @@ static BOOL LGHandleSearchFieldMaterialView(UIView *view, BOOL updateOnly) {
 
 - (void)setContentOffset:(CGPoint)offset {
     %orig;
-    if (!sAppLibLink) LG_updateRegisteredGlassViews(LGUpdateGroupAppLibrary);
+    if (!sAppLibraryDisplayLinkState.link) LG_updateRegisteredGlassViews(LGUpdateGroupAppLibrary);
 }
 
 %end

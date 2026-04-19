@@ -9,6 +9,12 @@ void LGTraverseViews(UIView *root, void (^block)(UIView *view));
 UIColor *LGDefaultTintColorForView(UIView *view, CGFloat lightAlpha, CGFloat darkAlpha);
 UIColor *LGDefaultTintColorForViewWithOverrideKey(UIView *view, CGFloat lightAlpha, CGFloat darkAlpha, NSString *overrideKey);
 NSInteger LGPreferredFramesPerSecondForKey(NSString *key, NSInteger minFPS);
+typedef struct {
+    __strong CADisplayLink *link;
+    __strong id driver;
+    // Main-thread only. All mutations are expected to happen behind LGAssertMainThread()-guarded helpers.
+    NSInteger activeCount;
+} LGDisplayLinkState;
 UIView *LGEnsureTintOverlayView(UIView *host,
                                 const void *associationKey,
                                 NSInteger tag,
@@ -27,3 +33,7 @@ void LGStartDisplayLink(CADisplayLink *__strong *linkStorage,
                         dispatch_block_t tickBlock);
 void LGStopDisplayLink(CADisplayLink *__strong *linkStorage,
                        id __strong *driverStorage);
+void LGStartDisplayLinkState(LGDisplayLinkState *state,
+                             NSInteger preferredFPS,
+                             dispatch_block_t tickBlock);
+void LGStopDisplayLinkState(LGDisplayLinkState *state);

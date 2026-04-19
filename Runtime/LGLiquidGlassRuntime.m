@@ -2,6 +2,7 @@
 #import "../Shared/LGSharedSupport.h"
 #import <CoreVideo/CoreVideo.h>
 #import <MetalPerformanceShaders/MetalPerformanceShaders.h>
+#include <stdatomic.h>
 
 typedef struct {
     vector_float2 resolution;
@@ -67,11 +68,11 @@ static MTLComputePassDescriptor   *sComputePassDesc;
 static NSMapTable *sTextureCache = nil;
 static id<MTLTexture> sOpaqueMaskTexture = nil;
 static dispatch_once_t sRuntimeInitOnce;
-static BOOL sRuntimeReady = NO;
+static _Atomic(BOOL) sRuntimeReady = NO;
 
 static BOOL LGEnsureRuntimeReady(void) {
     LGPrewarmPipelines();
-    return sRuntimeReady;
+    return atomic_load_explicit(&sRuntimeReady, memory_order_acquire);
 }
 
 static void LG_clearTextureCache(void) {
@@ -146,7 +147,7 @@ void LGPrewarmPipelines(void) {
                                   bytesPerRow:sizeof(pixel)];
         }
 
-        sRuntimeReady = YES;
+        atomic_store_explicit(&sRuntimeReady, YES, memory_order_release);
     });
 }
 
@@ -559,12 +560,8 @@ void LGPrewarmPipelines(void) {
         _wallpaperTextureBridge = [[LGZeroCopyBridge alloc] initWithDevice:sDevice];
     }
 
-    size_t currentWidth = _wallpaperTextureBridge.pixelBuffer
-        ? CVPixelBufferGetWidth(_wallpaperTextureBridge.pixelBuffer)
-        : 0;
-    size_t currentHeight = _wallpaperTextureBridge.pixelBuffer
-        ? CVPixelBufferGetHeight(_wallpaperTextureBridge.pixelBuffer)
-        : 0;
+    size_t currentWidth = [_wallpaperTextureBridge bufferWidth];
+    size_t currentHeight = [_wallpaperTextureBridge bufferHeight];
     if (currentWidth != width || currentHeight != height) {
         if (![_wallpaperTextureBridge setupBufferWithWidth:width height:height]) return;
         _blurredTexture = nil;

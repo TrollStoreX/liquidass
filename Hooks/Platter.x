@@ -13,8 +13,8 @@ static void *kLockPlatterDebugLoggedKey = &kLockPlatterDebugLoggedKey;
 #endif
 static void *kBannerBackdropViewKey = &kBannerBackdropViewKey;
 static void *kBannerAttachedKey = &kBannerAttachedKey;
-static CADisplayLink *sBannerLink = nil;
-static id sBannerTicker = nil;
+// Banner lifetime is tracked by the weak host registry, so this state only uses link/driver.
+static LGDisplayLinkState sBannerDisplayLinkState = {0};
 static NSHashTable<UIView *> *sBannerHosts = nil;
 
 BOOL LGIsLockscreenQuickActionsHost(UIView *view);
@@ -46,15 +46,15 @@ static BOOL LGHasBannerPresentationContext(UIView *view) {
 
 static void LGStartBannerDisplayLink(void) {
     LGAssertMainThread();
-    if (sBannerLink || !LGBannerEnabled()) return;
-    LGStartDisplayLink(&sBannerLink, &sBannerTicker, 60, ^{
+    if (sBannerDisplayLinkState.link || !LGBannerEnabled()) return;
+    LGStartDisplayLinkState(&sBannerDisplayLinkState, 60, ^{
         LGRefreshBannerPlatterHosts();
     });
 }
 
 static void LGStopBannerDisplayLink(void) {
     LGAssertMainThread();
-    LGStopDisplayLink(&sBannerLink, &sBannerTicker);
+    LGStopDisplayLinkState(&sBannerDisplayLinkState);
 }
 
 static void LGAttachBannerHostIfNeeded(UIView *view) {

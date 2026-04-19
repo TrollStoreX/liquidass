@@ -35,21 +35,19 @@ LG_FLOAT_PREF_FUNC(LGContextMenuIconSpacing, "ContextMenu.IconSpacing", 12.0)
 static void LGContextMenuRefreshAllHosts(void);
 static void LGStyleContextMenuListSubviews(UIView *listView);
 
-static CADisplayLink       *sCtxLink   = nil;
-static id                   sCtxTicker = nil;
-static NSInteger            sCtxCount  = 0;
+static LGDisplayLinkState sContextMenuDisplayLinkState = {0};
 static void *kCtxContainerAttachedKey  = &kCtxContainerAttachedKey;
 static void *kContextMenuBackdropAlphaKey = &kContextMenuBackdropAlphaKey;
 
 static void startContextMenuLink(void) {
-    LGStartDisplayLink(&sCtxLink, &sCtxTicker, LGPreferredFramesPerSecondForKey(@"Homescreen.FPS", 30), ^{
+    LGStartDisplayLinkState(&sContextMenuDisplayLinkState, LGPreferredFramesPerSecondForKey(@"Homescreen.FPS", 30), ^{
         if (LG_prefersLiveCapture(@"ContextMenu.RenderingMode")) LGContextMenuRefreshAllHosts();
         else LG_updateRegisteredGlassViews(LGUpdateGroupContextMenu);
     });
 }
 
 static void stopContextMenuLink(void) {
-    LGStopDisplayLink(&sCtxLink, &sCtxTicker);
+    LGStopDisplayLinkState(&sContextMenuDisplayLinkState);
 }
 
 static UIView *findDescendantMatching(UIView *root, BOOL (^match)(UIView *view)) {
@@ -551,14 +549,14 @@ static void LGContextMenuPrefsChanged(CFNotificationCenterRef center,
         if (![objc_getAssociatedObject(self, kCtxContainerAttachedKey) boolValue]) {
             objc_setAssociatedObject(self, kCtxContainerAttachedKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
             LG_cacheContextMenuSnapshot();
-            sCtxCount++;
+            sContextMenuDisplayLinkState.activeCount++;
             startContextMenuLink();
         }
     } else {
         if ([objc_getAssociatedObject(self, kCtxContainerAttachedKey) boolValue]) {
             objc_setAssociatedObject(self, kCtxContainerAttachedKey, nil, OBJC_ASSOCIATION_ASSIGN);
-            sCtxCount = MAX(0, sCtxCount - 1);
-            if (sCtxCount == 0) stopContextMenuLink();
+            sContextMenuDisplayLinkState.activeCount = MAX(0, sContextMenuDisplayLinkState.activeCount - 1);
+            if (sContextMenuDisplayLinkState.activeCount == 0) stopContextMenuLink();
             LG_invalidateContextMenuSnapshot();
         }
     }

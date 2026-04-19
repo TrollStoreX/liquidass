@@ -18,9 +18,7 @@ static void *kWidgetOriginalClipsKey = &kWidgetOriginalClipsKey;
 static void *kWidgetOriginalCornerCurveKey = &kWidgetOriginalCornerCurveKey;
 static void *kWidgetBackdropViewKey = &kWidgetBackdropViewKey;
 
-static CADisplayLink *sWidgetLink = nil;
-static id sWidgetTicker = nil;
-static NSInteger sWidgetCount = 0;
+static LGDisplayLinkState sWidgetDisplayLinkState = {0};
 
 LG_ENABLED_BOOL_PREF_FUNC(LGWidgetEnabled, "Widgets.Enabled", NO)
 LG_FLOAT_PREF_FUNC(LGWidgetCornerRadius, "Widgets.CornerRadius", 20.2)
@@ -65,14 +63,14 @@ static BOOL LGViewBelongsToWidgetStack(UIView *view) {
 }
 
 static void LGStartWidgetDisplayLink(void) {
-    LGStartDisplayLink(&sWidgetLink, &sWidgetTicker, LGPreferredFramesPerSecondForKey(@"Homescreen.FPS", 30), ^{
+    LGStartDisplayLinkState(&sWidgetDisplayLinkState, LGPreferredFramesPerSecondForKey(@"Homescreen.FPS", 30), ^{
         if (LG_prefersLiveCapture(@"Widgets.RenderingMode")) LGWidgetsRefreshAllHosts();
         else LG_updateRegisteredGlassViews(LGUpdateGroupWidgets);
     });
 }
 
 static void LGStopWidgetDisplayLink(void) {
-    LGStopDisplayLink(&sWidgetLink, &sWidgetTicker);
+    LGStopDisplayLinkState(&sWidgetDisplayLinkState);
 }
 
 static UIColor *widgetTintColorForView(UIView *view) {
@@ -200,8 +198,8 @@ static void LGDetachWidgetGlassHostView(UIView *view) {
     LGRestoreWidgetOriginalState(view);
     if ([objc_getAssociatedObject(view, kWidgetAttachedKey) boolValue]) {
         objc_setAssociatedObject(view, kWidgetAttachedKey, nil, OBJC_ASSOCIATION_ASSIGN);
-        sWidgetCount = MAX(0, sWidgetCount - 1);
-        if (sWidgetCount == 0) LGStopWidgetDisplayLink();
+        sWidgetDisplayLinkState.activeCount = MAX(0, sWidgetDisplayLinkState.activeCount - 1);
+        if (sWidgetDisplayLinkState.activeCount == 0) LGStopWidgetDisplayLink();
     }
 }
 
@@ -473,7 +471,7 @@ static void LGWidgetsPrefsChanged(CFNotificationCenterRef center,
     LGInjectIntoWidgetGlassHostView(self_);
     if (![objc_getAssociatedObject(self_, kWidgetAttachedKey) boolValue]) {
         objc_setAssociatedObject(self_, kWidgetAttachedKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        sWidgetCount++;
+        sWidgetDisplayLinkState.activeCount++;
         LGStartWidgetDisplayLink();
     }
 }
@@ -499,13 +497,13 @@ static void LGWidgetsPrefsChanged(CFNotificationCenterRef center,
 - (void)setContentOffset:(CGPoint)offset {
     %orig;
     if (!LGViewBelongsToWidgetStack((UIView *)self)) return;
-    if (!sWidgetLink) LG_updateRegisteredGlassViews(LGUpdateGroupWidgets);
+    if (!sWidgetDisplayLinkState.link) LG_updateRegisteredGlassViews(LGUpdateGroupWidgets);
 }
 
 - (void)setContentOffset:(CGPoint)offset animated:(BOOL)animated {
     %orig;
     if (!LGViewBelongsToWidgetStack((UIView *)self)) return;
-    if (!sWidgetLink) LG_updateRegisteredGlassViews(LGUpdateGroupWidgets);
+    if (!sWidgetDisplayLinkState.link) LG_updateRegisteredGlassViews(LGUpdateGroupWidgets);
 }
 
 %end
@@ -530,7 +528,7 @@ static void LGWidgetsPrefsChanged(CFNotificationCenterRef center,
     LGInjectIntoWidgetGlassHostView(host);
     if (![objc_getAssociatedObject(host, kWidgetAttachedKey) boolValue]) {
         objc_setAssociatedObject(host, kWidgetAttachedKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        sWidgetCount++;
+        sWidgetDisplayLinkState.activeCount++;
         LGStartWidgetDisplayLink();
     }
 }

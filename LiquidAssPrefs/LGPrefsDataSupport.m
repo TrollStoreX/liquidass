@@ -14,7 +14,7 @@ static NSString * const kLGNeedsRespringKey = @"LGPrefsNeedsRespring";
 static NSString * const kLGRespringBarDismissedKey = @"LGPrefsRespringBarDismissed";
 
 static NSBundle *LGActiveLocalizationBundle(void) {
-    NSString *languageCode = [LGStandardDefaults() stringForKey:kLGPrefsLanguageKey];
+    NSString *languageCode = [LGPrefsUIStateDefaults() stringForKey:kLGPrefsLanguageKey];
     NSBundle *baseBundle = [NSBundle bundleForClass:[LGPRootListController class]];
     if (!languageCode.length || [languageCode isEqualToString:@"en"]) {
         return baseBundle;
@@ -87,20 +87,20 @@ Class LGPrefsSliderClass(void) {
     return NSClassFromString(@"LGPrefsLiquidSlider") ?: [UISlider class];
 }
 
-NSUserDefaults *LGStandardDefaults(void) {
+NSUserDefaults *LGPrefsUIStateDefaults(void) {
     return [NSUserDefaults standardUserDefaults];
 }
 
 void LGSynchronizeSurfaceStateDefaults(void) {
-    [LGStandardDefaults() synchronize];
+    [LGPrefsUIStateDefaults() synchronize];
 }
 
 NSString *LGLastSurfaceIdentifier(void) {
-    return [LGStandardDefaults() stringForKey:kLGLastSurfaceKey];
+    return [LGPrefsUIStateDefaults() stringForKey:kLGLastSurfaceKey];
 }
 
 void LGSetLastSurfaceIdentifier(NSString *identifier) {
-    NSUserDefaults *defaults = LGStandardDefaults();
+    NSUserDefaults *defaults = LGPrefsUIStateDefaults();
     if (identifier.length) {
         [defaults setObject:identifier forKey:kLGLastSurfaceKey];
     } else {
@@ -142,12 +142,12 @@ NSString *LGPrefsAppName(void) {
 }
 
 NSString *LGCurrentPrefsLanguageCode(void) {
-    NSString *languageCode = [LGStandardDefaults() stringForKey:kLGPrefsLanguageKey];
+    NSString *languageCode = [LGPrefsUIStateDefaults() stringForKey:kLGPrefsLanguageKey];
     return languageCode.length ? languageCode : @"en";
 }
 
 void LGSetCurrentPrefsLanguageCode(NSString *languageCode) {
-    NSUserDefaults *defaults = LGStandardDefaults();
+    NSUserDefaults *defaults = LGPrefsUIStateDefaults();
     if (!languageCode.length || [languageCode isEqualToString:@"en"]) {
         [defaults removeObjectForKey:kLGPrefsLanguageKey];
     } else {
@@ -163,21 +163,21 @@ BOOL LGPreferenceRequiresRespring(NSString *key) {
 }
 
 BOOL LGNeedsRespring(void) {
-    return [LGStandardDefaults() boolForKey:kLGNeedsRespringKey];
+    return [LGPrefsUIStateDefaults() boolForKey:kLGNeedsRespringKey];
 }
 
 BOOL LGRespringBarDismissed(void) {
-    return [LGStandardDefaults() boolForKey:kLGRespringBarDismissedKey];
+    return [LGPrefsUIStateDefaults() boolForKey:kLGRespringBarDismissedKey];
 }
 
 void LGSetRespringBarDismissed(BOOL dismissed) {
-    NSUserDefaults *defaults = LGStandardDefaults();
+    NSUserDefaults *defaults = LGPrefsUIStateDefaults();
     [defaults setBool:dismissed forKey:kLGRespringBarDismissedKey];
     LGSynchronizeSurfaceStateDefaults();
 }
 
 void LGSetNeedsRespring(BOOL needsRespring) {
-    NSUserDefaults *defaults = LGStandardDefaults();
+    NSUserDefaults *defaults = LGPrefsUIStateDefaults();
     [defaults setBool:needsRespring forKey:kLGNeedsRespringKey];
     if (!needsRespring) {
         [defaults setBool:NO forKey:kLGRespringBarDismissedKey];
@@ -537,7 +537,7 @@ NSArray<NSDictionary *> *LGLockscreenItems(void) {
         LGGlassSpecularSetting(@"LockscreenQuickActions.SpecularOpacity", 0.6, 0.0, 1.0, 2),
         LGGlassQualitySetting(@"LockscreenQuickActions.WallpaperScale", 0.5, 0.1, 1.0, 2),
         LGSectionSetting(LGLocalized(@"prefs.section.lockscreen_clock.title"), LGLocalized(@"prefs.section.lockscreen_clock.subtitle")),
-        LGGlassEnabledSetting(@"Lockscreen.Clock.Enabled", NO),
+        LGGlassEnabledSetting(@"Lockscreen.Clock.Enabled", YES),
     ]];
 
     [items addObject:LGGlassBezelSetting(@"Lockscreen.Clock.BezelWidth", 24.0, 0.0, 50.0, 1)];
@@ -844,7 +844,7 @@ void LGResetAllPreferences(void) {
         LGRemovePreference(key);
     }
     CFPreferencesAppSynchronize((__bridge CFStringRef)LGPrefsDomain);
-    [LGStandardDefaults() removeObjectForKey:kLGPrefsLanguageKey];
+    [LGPrefsUIStateDefaults() removeObjectForKey:kLGPrefsLanguageKey];
     LGSynchronizeSurfaceStateDefaults();
     LGSetRespringBarDismissed(NO);
     LGSetNeedsRespring(YES);

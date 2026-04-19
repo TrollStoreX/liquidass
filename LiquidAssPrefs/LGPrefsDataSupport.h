@@ -18,7 +18,7 @@ NSString *LGFormatSliderValue(CGFloat value, NSInteger decimals);
 NSString *LGCurrentPrefsLanguageCode(void);
 void LGSetCurrentPrefsLanguageCode(NSString *languageCode);
 
-NSUserDefaults *LGStandardDefaults(void);
+NSUserDefaults *LGPrefsUIStateDefaults(void);
 void LGSynchronizeSurfaceStateDefaults(void);
 NSString *LGLastSurfaceIdentifier(void);
 void LGSetLastSurfaceIdentifier(NSString *identifier);

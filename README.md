@@ -40,7 +40,7 @@ This tweak is incomplete, issues WILL happen.
   - Snell's [law of refraction](https://en.wikipedia.org/wiki/Snell%27s_law)
   - blur/body mix
   - specular highlight / fresnel-ish lift
-- there is also a shape mask path used for the experimental lockscreen clock. the shader receives a second texture mask and derives edge behavior from the glyph shape instead of only from a rounded rect
+- there is also a shape mask path used for the lockscreen clock. the shader receives a second texture mask and derives edge behavior from the glyph shape instead of only from a rounded rect
 - the blur is separable and baked in two compute passes, then reused until settings or source content actually require a rebake
 
 ### contributions to this tweak are welcomed
