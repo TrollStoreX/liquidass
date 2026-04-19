@@ -97,7 +97,7 @@ static void ReloadPrefs(void) {
 @end
 
 static BOOL ShouldHandleWidget(NSString *bundleIdentifier) {
-    return bundleIdentifier.length > 0 && [kWidgetBundleIdentifiers containsObject:bundleIdentifier];
+    return kIsEnabled && bundleIdentifier.length > 0 && [kWidgetBundleIdentifiers containsObject:bundleIdentifier];
 }
 
 %group RWBSpringBoard
@@ -121,7 +121,7 @@ static BOOL ShouldHandleWidget(NSString *bundleIdentifier) {
 %hook CHUISWidgetHostViewController
 
 - (unsigned long long)colorScheme {
-    if (kForceDarkMode) return 2;
+    if (kIsEnabled && kForceDarkMode) return 2;
     return %orig;
 }
 
@@ -199,7 +199,7 @@ static BOOL ShouldHandleWidget(NSString *bundleIdentifier) {
         }
     }
     UIWindow *window = %orig;
-    if (window) {
+    if (window && kIsEnabled && kForceDarkMode) {
         [window setOverrideUserInterfaceStyle:UIUserInterfaceStyleDark];
     }
     return window;
@@ -210,7 +210,7 @@ static BOOL ShouldHandleWidget(NSString *bundleIdentifier) {
 %hook CHUISWidgetScene
 
 - (unsigned long long)colorScheme {
-    if (kForceDarkMode) return 2;
+    if (kIsEnabled && kForceDarkMode) return 2;
     return %orig;
 }
 
@@ -219,7 +219,7 @@ static BOOL ShouldHandleWidget(NSString *bundleIdentifier) {
 %hook CHSMutableScreenshotPresentationAttributes
 
 - (long long)colorScheme {
-    if (kForceDarkMode) return 2;
+    if (kIsEnabled && kForceDarkMode) return 2;
     return %orig;
 }
 
@@ -228,7 +228,7 @@ static BOOL ShouldHandleWidget(NSString *bundleIdentifier) {
 %hook CHSScreenshotPresentationAttributes
 
 - (long long)colorScheme {
-    if (kForceDarkMode) return 2;
+    if (kIsEnabled && kForceDarkMode) return 2;
     return %orig;
 }
 
@@ -238,6 +238,7 @@ static BOOL ShouldHandleWidget(NSString *bundleIdentifier) {
 
 - (void)layoutSubviews {
     %orig;
+    if (!kIsEnabled) return;
     if (![NSStringFromClass([self class]) containsString:@"UIHostingView"]) {
         self.backgroundColor = UIColor.clearColor;
     }
@@ -250,7 +251,7 @@ static BOOL ShouldHandleWidget(NSString *bundleIdentifier) {
 - (void)display {
     UIView *view = (UIView *)self.delegate;
 
-    if ([view isKindOfClass:[UIView class]] && view.window.rwb_shouldHideBackground.boolValue) {
+    if (kIsEnabled && [view isKindOfClass:[UIView class]] && view.window.rwb_shouldHideBackground.boolValue) {
         NSMutableDictionary *threadDict = [NSThread currentThread].threadDictionary;
         threadDict[@"rwb_shouldHideBackground"] = @YES;
         if (@available(iOS 17, *)) {
@@ -280,7 +281,7 @@ static BOOL ShouldHandleWidget(NSString *bundleIdentifier) {
 %hook RBShape
 
 - (void)setRect:(CGRect)rect {
-    if ([NSThread currentThread].threadDictionary[@"rwb_shouldHideBackground"]) {
+    if (kIsEnabled && [NSThread currentThread].threadDictionary[@"rwb_shouldHideBackground"]) {
         if (rect.size.width > kMaxWidgetWidth && rect.size.height > kMaxWidgetHeight) {
             %orig(CGRectZero);
             return;
@@ -294,7 +295,7 @@ static BOOL ShouldHandleWidget(NSString *bundleIdentifier) {
 %hook UISCurrentUserInterfaceStyleValue
 
 - (long long)userInterfaceStyle {
-    if (kForceDarkMode) return 2;
+    if (kIsEnabled && kForceDarkMode) return 2;
     return %orig;
 }
 
@@ -308,7 +309,7 @@ static BOOL ShouldHandleWidget(NSString *bundleIdentifier) {
 
 - (void)setRect:(CGRect)rect {
     NSMutableDictionary *threadDict = [NSThread currentThread].threadDictionary;
-    if (threadDict[@"rwb_shouldHideBackground"]) {
+    if (kIsEnabled && threadDict[@"rwb_shouldHideBackground"]) {
         if (rect.size.width > kMaxWidgetWidth && rect.size.height > kMaxWidgetHeight) {
             if ([threadDict[@"rwb_didSkipFirst"] boolValue]) {
                 %orig(CGRectZero);
@@ -330,7 +331,7 @@ static BOOL ShouldHandleWidget(NSString *bundleIdentifier) {
 
 - (void)setRect:(CGRect)rect {
     NSMutableDictionary *threadDict = [NSThread currentThread].threadDictionary;
-    if (threadDict[@"rwb_shouldHideBackground"]) {
+    if (kIsEnabled && threadDict[@"rwb_shouldHideBackground"]) {
         if (rect.size.width > kMaxWidgetWidth && rect.size.height > kMaxWidgetHeight) {
             NSNumber *firstN = threadDict[@"rwb_didSkipFirstN"];
             if ([firstN intValue] > 1) {
