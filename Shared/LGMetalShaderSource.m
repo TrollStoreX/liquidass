@@ -306,12 +306,12 @@ NSString *LGGlassMetalSource(void) {
         "    float specLobe = useShapeMask ? max(primary, secondary) : (inCorner ? cornerSpec : (primary + secondary));\n"
         "    float fresnel = pow(clamp(1.0 - bezelRatio, 0.0, 1.0), 2.2) * (useShapeMask ? edgeBand : edgeOpacity);\n"
         "    float specular = specLobe * strokeMask * u.specularOpacity * (useShapeMask ? 1.15 : 2.15) * edgeOpacity;\n"
-        "    float highlight = specular + fresnel * (useShapeMask ? 0.28 : 0.46);\n"
+        "    float highlight = specular + fresnel * (useShapeMask ? 0.28 : 0.34);\n"
         "    float3 lch = srgbToLch(clamp(bgColor.rgb, 0.0, 1.0));\n"
-        "    lch.x = clamp(lch.x + highlight * (useShapeMask ? 18.0 : 40.0), 0.0, 100.0);\n"
+        "    lch.x = clamp(lch.x + highlight * (useShapeMask ? 18.0 : 36.0), 0.0, 100.0);\n"
         "    lch.y = max(0.0, lch.y - highlight * (useShapeMask ? 4.0 : 9.0));\n"
         "    float3 shapedHighlight = lchToSrgb(lch);\n"
-        "    bgColor.rgb = mix(bgColor.rgb, shapedHighlight, clamp(highlight * (useShapeMask ? 0.48 : 0.78), 0.0, 1.0));\n"
+        "    bgColor.rgb = mix(bgColor.rgb, shapedHighlight, clamp(highlight * (useShapeMask ? 0.48 : 0.70), 0.0, 1.0));\n"
         "    return float4(bgColor.rgb, edgeOpacity);\n"
         "}\n";
     return source;

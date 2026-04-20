@@ -30,5 +30,6 @@ UIBarButtonItem *LGMakeCircularBackItem(id target, SEL action);
 UIBarButtonItem *LGMakeResetTextItem(id target, SEL action);
 void LGPresentResetConfirmation(UIViewController *controller);
 void LGPresentRespringConfirmation(UIViewController *controller);
+void LGPresentInvalidateCachesConfirmation(UIViewController *controller);
 void LGPresentReopenSettingsConfirmation(UIViewController *controller);
 void LGPresentInfoSheet(UIViewController *controller, NSString *title, NSString *message);

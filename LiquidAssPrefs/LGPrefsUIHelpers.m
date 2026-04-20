@@ -660,6 +660,113 @@ void LGPresentRespringConfirmation(UIViewController *controller) {
     }];
 }
 
+void LGPresentInvalidateCachesConfirmation(UIViewController *controller) {
+    if (!controller.view.window) return;
+    UIView *existing = [controller.view viewWithTag:0x1AD0];
+    if (existing) [existing removeFromSuperview];
+
+    UIView *overlay = [[UIView alloc] initWithFrame:controller.view.bounds];
+    overlay.tag = 0x1AD0;
+    overlay.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    overlay.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.24];
+    overlay.alpha = 0.0;
+
+    UIControl *dismissControl = [[UIControl alloc] initWithFrame:overlay.bounds];
+    dismissControl.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [overlay addSubview:dismissControl];
+
+    UIVisualEffectView *panel =
+        [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterial]];
+    panel.translatesAutoresizingMaskIntoConstraints = NO;
+    panel.layer.cornerRadius = 32.0;
+    panel.layer.cornerCurve = kCACornerCurveContinuous;
+    panel.layer.masksToBounds = YES;
+    panel.transform = CGAffineTransformMakeScale(0.96, 0.96);
+
+    UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    titleLabel.text = LGLocalized(@"prefs.invalidate_caches_confirm.title");
+    titleLabel.font = [UIFont systemFontOfSize:24.0 weight:UIFontWeightBold];
+    titleLabel.numberOfLines = 0;
+
+    UILabel *bodyLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    bodyLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    bodyLabel.text = LGLocalized(@"prefs.invalidate_caches_confirm.body");
+    bodyLabel.font = [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
+    bodyLabel.textColor = [UIColor secondaryLabelColor];
+    bodyLabel.numberOfLines = 0;
+
+    UIButton *cancelButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    cancelButton.translatesAutoresizingMaskIntoConstraints = NO;
+    [cancelButton setTitle:LGLocalized(@"prefs.button.cancel") forState:UIControlStateNormal];
+    [cancelButton setTitleColor:[UIColor secondaryLabelColor] forState:UIControlStateNormal];
+    cancelButton.titleLabel.font = [UIFont systemFontOfSize:17.0 weight:UIFontWeightSemibold];
+    cancelButton.backgroundColor = [UIColor tertiarySystemFillColor];
+    cancelButton.layer.cornerRadius = 23.0;
+    cancelButton.layer.cornerCurve = kCACornerCurveContinuous;
+    cancelButton.layer.masksToBounds = YES;
+
+    UIButton *invalidateButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    invalidateButton.translatesAutoresizingMaskIntoConstraints = NO;
+    [invalidateButton setTitle:LGLocalized(@"prefs.button.invalidate") forState:UIControlStateNormal];
+    [invalidateButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    invalidateButton.titleLabel.font = [UIFont systemFontOfSize:17.0 weight:UIFontWeightSemibold];
+    invalidateButton.backgroundColor = [UIColor systemBlueColor];
+    invalidateButton.layer.cornerRadius = 23.0;
+    invalidateButton.layer.cornerCurve = kCACornerCurveContinuous;
+    invalidateButton.layer.masksToBounds = YES;
+
+    UIStackView *buttonRow = [[UIStackView alloc] initWithArrangedSubviews:@[cancelButton, invalidateButton]];
+    buttonRow.translatesAutoresizingMaskIntoConstraints = NO;
+    buttonRow.axis = UILayoutConstraintAxisHorizontal;
+    buttonRow.spacing = 12.0;
+    buttonRow.distribution = UIStackViewDistributionFillEqually;
+
+    [overlay addSubview:panel];
+    [panel.contentView addSubview:titleLabel];
+    [panel.contentView addSubview:bodyLabel];
+    [panel.contentView addSubview:buttonRow];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [panel.centerXAnchor constraintEqualToAnchor:overlay.centerXAnchor],
+        [panel.centerYAnchor constraintEqualToAnchor:overlay.centerYAnchor],
+        [panel.leadingAnchor constraintGreaterThanOrEqualToAnchor:overlay.leadingAnchor constant:20.0],
+        [panel.trailingAnchor constraintLessThanOrEqualToAnchor:overlay.trailingAnchor constant:-20.0],
+        [panel.widthAnchor constraintEqualToConstant:320.0],
+        [titleLabel.topAnchor constraintEqualToAnchor:panel.contentView.topAnchor constant:22.0],
+        [titleLabel.leadingAnchor constraintEqualToAnchor:panel.contentView.leadingAnchor constant:18.0],
+        [titleLabel.trailingAnchor constraintEqualToAnchor:panel.contentView.trailingAnchor constant:-18.0],
+        [bodyLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:10.0],
+        [bodyLabel.leadingAnchor constraintEqualToAnchor:panel.contentView.leadingAnchor constant:18.0],
+        [bodyLabel.trailingAnchor constraintEqualToAnchor:panel.contentView.trailingAnchor constant:-18.0],
+        [buttonRow.topAnchor constraintEqualToAnchor:bodyLabel.bottomAnchor constant:20.0],
+        [buttonRow.leadingAnchor constraintEqualToAnchor:panel.contentView.leadingAnchor constant:16.0],
+        [buttonRow.trailingAnchor constraintEqualToAnchor:panel.contentView.trailingAnchor constant:-16.0],
+        [buttonRow.bottomAnchor constraintEqualToAnchor:panel.contentView.bottomAnchor constant:-16.0],
+        [cancelButton.heightAnchor constraintEqualToConstant:46.0],
+        [invalidateButton.heightAnchor constraintEqualToConstant:46.0],
+    ]];
+
+    [dismissControl addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull _) {
+        LGDismissOverlayPanel(overlay, panel);
+    }] forControlEvents:UIControlEventTouchUpInside];
+
+    [cancelButton addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull _) {
+        LGDismissOverlayPanel(overlay, panel);
+    }] forControlEvents:UIControlEventTouchUpInside];
+
+    [invalidateButton addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull _) {
+        LGPostInvalidateSnapshotCachesNotification();
+        LGDismissOverlayPanel(overlay, panel);
+    }] forControlEvents:UIControlEventTouchUpInside];
+
+    [controller.view addSubview:overlay];
+    [UIView animateWithDuration:0.22 animations:^{
+        overlay.alpha = 1.0;
+        panel.transform = CGAffineTransformIdentity;
+    }];
+}
+
 void LGPresentReopenSettingsConfirmation(UIViewController *controller) {
     if (!controller.view.window) return;
     UIView *existing = [controller.view viewWithTag:0x1AD2];

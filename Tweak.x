@@ -7,6 +7,8 @@
 #import "Runtime/LGSnapshotCaptureSupport.h"
 
 static BOOL LG_isAtLeastiOS16(void);
+static CFStringRef const LGInvalidateSnapshotCachesNotification = CFSTR("love.litten.liquidass/InvalidateSnapshotCaches");
+void LGRefreshLockSnapshotAfterDelay(NSTimeInterval delay);
 
 typedef NS_OPTIONS(NSUInteger, SBSRelaunchActionOptions) {
     SBSRelaunchActionOptionsNone = 0,
@@ -1249,6 +1251,23 @@ static void LG_respringRequested(CFNotificationCenterRef center,
     });
 }
 
+static void LG_invalidateSnapshotCachesRequested(CFNotificationCenterRef center,
+                                                 void *observer,
+                                                 CFStringRef name,
+                                                 const void *object,
+                                                 CFDictionaryRef userInfo) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        LGLog(@"snapshot cache invalidation requested");
+        sCachedSnapshot = nil;
+        LG_invalidateFolderSnapshot();
+        LG_invalidateContextMenuSnapshot();
+        LGInvalidateLockscreenSnapshotCache();
+        LG_trySnapshotWithRetry();
+        if (!LG_getFolderSnapshot()) LG_cacheFolderSnapshot();
+        LGRefreshLockSnapshotAfterDelay(0.0);
+    });
+}
+
 static void LG_requestRespring(void) {
     dlopen("/System/Library/PrivateFrameworks/FrontBoardServices.framework/FrontBoardServices", RTLD_NOW);
     dlopen("/System/Library/PrivateFrameworks/SpringBoardServices.framework/SpringBoardServices", RTLD_NOW);
@@ -1296,6 +1315,12 @@ static void LG_requestRespring(void) {
                                     NULL,
                                     LG_respringRequested,
                                     LGPrefsRespringNotification,
+                                    NULL,
+                                    CFNotificationSuspensionBehaviorDeliverImmediately);
+    CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),
+                                    NULL,
+                                    LG_invalidateSnapshotCachesRequested,
+                                    LGInvalidateSnapshotCachesNotification,
                                     NULL,
                                     CFNotificationSuspensionBehaviorDeliverImmediately);
 }

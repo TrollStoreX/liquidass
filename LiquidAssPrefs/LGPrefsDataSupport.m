@@ -12,6 +12,7 @@ NSString * const kLGPrefsLanguageChangedNotification = @"LGPrefsLanguageChangedN
 NSString * const kLGPrefsLanguageKey = @"LGPrefsLanguage";
 static NSString * const kLGNeedsRespringKey = @"LGPrefsNeedsRespring";
 static NSString * const kLGRespringBarDismissedKey = @"LGPrefsRespringBarDismissed";
+static const char *LGInvalidateSnapshotCachesNotificationCString = "love.litten.liquidass/InvalidateSnapshotCaches";
 
 static NSBundle *LGActiveLocalizationBundle(void) {
     NSString *languageCode = [LGPrefsUIStateDefaults() stringForKey:kLGPrefsLanguageKey];
@@ -184,6 +185,10 @@ void LGSetNeedsRespring(BOOL needsRespring) {
     }
     LGSynchronizeSurfaceStateDefaults();
     [[NSNotificationCenter defaultCenter] postNotificationName:kLGPrefsRespringChangedNotification object:nil];
+}
+
+void LGPostInvalidateSnapshotCachesNotification(void) {
+    notify_post(LGInvalidateSnapshotCachesNotificationCString);
 }
 
 NSNumber *LGReadPreference(NSString *key, NSNumber *fallback) {
@@ -876,6 +881,9 @@ NSArray<NSDictionary *> *LGMoreOptionsItems(void) {
                                      LGLocalized(@"prefs.misc.debug_logging.title"),
                                      LGLocalized(@"prefs.misc.debug_logging.subtitle"),
                                      NO)];
+    [items addObject:LGNavSetting(LGLocalized(@"prefs.misc.invalidate_caches.title"),
+                                  LGLocalized(@"prefs.misc.invalidate_caches.subtitle"),
+                                  @"invalidateSnapshotCaches")];
     [items addObject:LGNavSetting(LGLocalized(@"prefs.misc.experimental.title"),
                                   LGLocalized(@"prefs.misc.experimental.subtitle"),
                                   @"openExperimental")];

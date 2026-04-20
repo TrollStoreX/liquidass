@@ -98,6 +98,7 @@
 "prefs.button.cancel" = "Cancel";
 "prefs.button.respring" = "Respring";
 "prefs.button.later" = "Later";
+"prefs.button.invalidate" = "Invalidate";
 "prefs.button.reopen_settings" = "Reopen";
 "prefs.button.ok" = "OK";
 "prefs.button.go_to_top" = "Go to top";
@@ -107,6 +108,8 @@
 "prefs.reset_confirm.body" = "This action will reset all preferences to their defaults. Do you wish to continue?";
 "prefs.respring_confirm.title" = "Confirm Respring";
 "prefs.respring_confirm.body" = "Do you wish to respring now? Any running background apps or processes might close if you do.";
+"prefs.invalidate_caches_confirm.title" = "Invalidate Snapshot Caches?";
+"prefs.invalidate_caches_confirm.body" = "This is useful when there are sampling alignment issues that needs a refresh to fix. Do you want to continue?";
 "prefs.reopen_settings.title" = "Reopen Settings";
 "prefs.reopen_settings.body" = "This change applies the next time Settings starts. Reopen Settings now?";
 "prefs.respring_bar.title" = "Respring Recommended";
@@ -147,6 +150,8 @@
 "prefs.misc.app_library_composite.subtitle" = "Also samples homescreen icons and not just the wallpaper in App Library. Accurate to iOS 26 but can look weird on certain setups.";
 "prefs.misc.debug_logging.title" = "Debug Logging";
 "prefs.misc.debug_logging.subtitle" = "Enable verbose diagnostic logs written to /tmp/LiquidAss.log";
+"prefs.misc.invalidate_caches.title" = "Invalidate Snapshot Caches";
+"prefs.misc.invalidate_caches.subtitle" = "Clears cached snapshots then rebuild them fresh.";
 "prefs.misc.tint_override_per_surface.title" = "Per-Surface Tint Override";
 "prefs.misc.tint_override_per_surface.subtitle" = "Show individual tint override controls for each surface.";
 "prefs.tint_override.system.title" = "Follow System";

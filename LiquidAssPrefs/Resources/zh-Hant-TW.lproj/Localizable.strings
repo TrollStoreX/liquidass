@@ -3,6 +3,7 @@
 "prefs.button.cancel"="取消";
 "prefs.button.go_to_top"="回到頂端";
 "prefs.button.later"="稍後";
+"prefs.button.invalidate"="使其失效";
 "prefs.button.ok"="確定";
 "prefs.button.reopen_settings"="重新開啟";
 "prefs.button.reset"="重置";
@@ -45,6 +46,8 @@
 "prefs.misc.app_library_composite.title"="資料庫合成圖示";
 "prefs.misc.debug_logging.subtitle"="啟用寫入 /tmp/LiquidAss.log 的詳細診斷記錄";
 "prefs.misc.debug_logging.title"="除錯記錄";
+"prefs.misc.invalidate_caches.title"="使快照快取失效";
+"prefs.misc.invalidate_caches.subtitle"="清除已快取的快照，然後重新建立它們。";
 "prefs.misc.experimental.subtitle"="算繪方式與不穩定功能。";
 "prefs.misc.experimental.title"="實驗性功能";
 "prefs.misc.language.subtitle"="選擇此設定介面的語言";
@@ -66,6 +69,8 @@
 "prefs.respring_bar.title"="建議重新啟動主畫面";
 "prefs.respring_confirm.body"="是否現在重新啟動主畫面？執行後，正在運作的背景 App 或程序可能會關閉。";
 "prefs.respring_confirm.title"="確認重新啟動主畫面";
+"prefs.invalidate_caches_confirm.body"="當取樣對齊出現問題並需要重新整理來修正時，這個選項會很有用。是否繼續？";
+"prefs.invalidate_caches_confirm.title"="使快照快取失效？";
 "prefs.section.app_icons.subtitle"="App 圖示底層材質、色調、算繪品質等";
 "prefs.section.app_icons.title"="App 圖示";
 "prefs.section.banner.subtitle"="頂端通知橫幅的材質與算繪";

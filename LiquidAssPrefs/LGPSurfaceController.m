@@ -152,6 +152,10 @@
     [self.navigationController pushViewController:controller animated:YES];
 }
 
+- (void)invalidateSnapshotCaches {
+    LGPresentInvalidateCachesConfirmation(self);
+}
+
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }

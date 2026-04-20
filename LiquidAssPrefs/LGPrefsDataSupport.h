@@ -30,6 +30,7 @@ BOOL LGNeedsRespring(void);
 BOOL LGRespringBarDismissed(void);
 void LGSetRespringBarDismissed(BOOL dismissed);
 void LGSetNeedsRespring(BOOL needsRespring);
+void LGPostInvalidateSnapshotCachesNotification(void);
 
 NSNumber *LGReadPreference(NSString *key, NSNumber *fallback);
 void LGWritePreference(NSString *key, NSNumber *value);
