@@ -98,7 +98,7 @@
 "prefs.button.cancel" = "Hủy";
 "prefs.button.respring" = "Respring";
 "prefs.button.later" = "Để sau";
-"prefs.button.invalidate" = "Làm mất hiệu lực";
+"prefs.button.invalidate" = "Xoá";
 "prefs.button.reopen_settings" = "Mở lại";
 "prefs.button.ok" = "OK";
 "prefs.button.go_to_top" = "Lên đầu";
@@ -108,7 +108,7 @@
 "prefs.reset_confirm.body" = "Thao tác này sẽ đặt lại toàn bộ tuỳ chọn về mặc định. Bạn có muốn tiếp tục không?";
 "prefs.respring_confirm.title" = "Xác nhận khởi động lại giao diện";
 "prefs.respring_confirm.body" = "Bạn có muốn respring ngay bây giờ không? Nếu làm vậy, các ứng dụng hoặc tiến trình nền đang chạy có thể bị đóng.";
-"prefs.invalidate_caches_confirm.title" = "Làm mất hiệu lực bộ nhớ đệm ảnh chụp?";
+"prefs.invalidate_caches_confirm.title" = "Xoá bộ nhớ đệm ảnh chụp?";
 "prefs.invalidate_caches_confirm.body" = "Tùy chọn này hữu ích khi có lỗi lệch căn lấy mẫu và cần làm mới để sửa. Bạn có muốn tiếp tục không?";
 "prefs.reopen_settings.title" = "Mở lại Cài đặt";
 "prefs.reopen_settings.body" = "Thay đổi này sẽ chỉ áp dụng khi Cài đặt khởi động lại. Mở lại Cài đặt ngay bây giờ?";
@@ -150,7 +150,7 @@
 "prefs.misc.app_library_composite.subtitle" = "Trong App Library sẽ lấy mẫu cả icon ở Homescreen chứ không chỉ wallpaper. Chính xác hơn với iOS 26 nhưng có thể nhìn hơi lạ ở vài setup.";
 "prefs.misc.debug_logging.title" = "Ghi nhật ký gỡ lỗi";
 "prefs.misc.debug_logging.subtitle" = "Bật log chẩn đoán chi tiết được ghi vào /tmp/LiquidAss.log";
-"prefs.misc.invalidate_caches.title" = "Làm mất hiệu lực bộ nhớ đệm ảnh chụp";
+"prefs.misc.invalidate_caches.title" = "Xoá bộ nhớ đệm ảnh chụp";
 "prefs.misc.invalidate_caches.subtitle" = "Xóa các ảnh chụp đã lưu rồi tạo lại chúng từ đầu.";
 "prefs.misc.tint_override_per_surface.title" = "Ghi đè tint theo bề mặt";
 "prefs.misc.tint_override_per_surface.subtitle" = "Hiện các điều khiển ghi đè tint riêng cho từng bề mặt.";
