@@ -2,6 +2,8 @@
 #import "../../Shared/LGHookSupport.h"
 #import "../../Shared/LGPrefAccessors.h"
 #import <CoreText/CoreText.h>
+#import <CoreGraphics/CoreGraphics.h>
+#import <math.h>
 #import <objc/runtime.h>
 
 static void *kLGClockOverlayKey = &kLGClockOverlayKey;
@@ -9,6 +11,9 @@ static void *kLGClockOriginalAlphaKey = &kLGClockOriginalAlphaKey;
 static void *kLGClockOriginalLayerOpacityKey = &kLGClockOriginalLayerOpacityKey;
 static void *kLGClockScrollObserverKey = &kLGClockScrollObserverKey;
 static void *kLGClockScrollKVOContext = &kLGClockScrollKVOContext;
+static void *kLGClockAttachedKey = &kLGClockAttachedKey;
+static LGDisplayLinkState sClockDisplayLinkState = {0};
+static NSHashTable<UIView *> *sClockHosts = nil;
 
 LG_FLOAT_PREF_FUNC(LGClockBezelWidth, "Lockscreen.Clock.BezelWidth", 24.0)
 LG_FLOAT_PREF_FUNC(LGClockGlassThickness, "Lockscreen.Clock.GlassThickness", 150.0)
@@ -19,10 +24,17 @@ LG_FLOAT_PREF_FUNC(LGClockBlur, "Lockscreen.Clock.Blur", 3.0)
 LG_FLOAT_PREF_FUNC(LGClockWallpaperScale, "Lockscreen.Clock.WallpaperScale", 1.0)
 LG_FLOAT_PREF_FUNC(LGClockLightTintAlpha, "Lockscreen.Clock.LightTintAlpha", 0.3)
 LG_FLOAT_PREF_FUNC(LGClockDarkTintAlpha, "Lockscreen.Clock.DarkTintAlpha", 0.0)
+LG_BOOL_PREF_FUNC(LGClockVariableFontEnabled, "Lockscreen.Clock.VariableFont.Enabled", YES)
+LG_FLOAT_PREF_FUNC(LGClockVariableFontWeight, "Lockscreen.Clock.VariableFont.Weight", 640.0)
+LG_FLOAT_PREF_FUNC(LGClockVariableFontWidth, "Lockscreen.Clock.VariableFont.Width", 92.0)
+LG_FLOAT_PREF_FUNC(LGClockVariableFontHeight, "Lockscreen.Clock.VariableFont.Height", 112.0)
+LG_FLOAT_PREF_FUNC(LGClockVariableFontSoftness, "Lockscreen.Clock.VariableFont.Softness", 56.0)
 LG_FLOAT_PREF_FUNC(LGClockLegacyFontWeight, "Lockscreen.Clock.LegacyFontWeight", UIFontWeightHeavy)
 LG_FLOAT_PREF_FUNC(LGClockLegacySizeBoost, "Lockscreen.Clock.LegacySizeBoost", 1.05)
 LG_FLOAT_PREF_FUNC(LGClockLegacyEmbolden, "Lockscreen.Clock.LegacyEmbolden", 0.35)
-LG_FLOAT_PREF_FUNC(LGClockLegacyGap, "Lockscreen.Clock.LegacyGap", 8.0)
+
+static NSString * const LGClockLegacyFontStyleCurrent = @"current";
+static NSString * const LGClockLegacyFontStyleRounded = @"rounded";
 
 static void LGSetLayerTreeOpacity(CALayer *layer, float opacity) {
     if (!layer) return;
@@ -35,6 +47,197 @@ static void LGSetLayerTreeOpacity(CALayer *layer, float opacity) {
 static BOOL LGClockEnabled(void) {
     return LGLockscreenEnabled()
         && LG_prefBool(@"Lockscreen.Clock.Enabled", YES);
+}
+
+static NSString *LGClockVariableFontPath(void) {
+    static NSString *path = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        NSArray<NSString *> *candidates = @[
+            @"/opt/simject/PreferenceBundles/LiquidAssPrefs.bundle/SFAdaptiveSoftNumeric-VF.otf",
+            @"/var/jb/Library/PreferenceBundles/LiquidAssPrefs.bundle/SFAdaptiveSoftNumeric-VF.otf",
+            @"/Library/PreferenceBundles/LiquidAssPrefs.bundle/SFAdaptiveSoftNumeric-VF.otf",
+        ];
+        NSFileManager *fm = [NSFileManager defaultManager];
+        for (NSString *candidate in candidates) {
+            if ([fm fileExistsAtPath:candidate]) {
+                path = [candidate copy];
+                break;
+            }
+        }
+        if (!path.length) {
+            LGLog(@"clock variable font path not found candidates=%@", candidates);
+        }
+    });
+    return path;
+}
+
+static BOOL LGAxisNameMatches(NSString *axisName, NSString *needle, NSString *shortNeedle) {
+    if (![axisName isKindOfClass:[NSString class]]) return NO;
+    NSString *lower = axisName.lowercaseString;
+    return [lower containsString:needle] || [lower containsString:shortNeedle];
+}
+
+static NSDictionary<NSString *, NSNumber *> *sClockVariableAxisIdentifiers = nil;
+static NSDictionary<NSString *, NSArray<NSNumber *> *> *sClockVariableAxisRanges = nil;
+static NSString *sClockVariablePostScriptName = nil;
+static CGFontRef sClockVariableCGFont = NULL;
+static CTFontRef LGClockVariableCTFont(CGFloat pointSize);
+static CTFontRef LGClockVariableCTFontForHeight(CGFloat pointSize, CGFloat heightValue);
+static CGRect LGClockExpandedModernFrameForRect(CGRect frame, UIView *host, UIFont *font, id ctFontObject);
+static void LGApplyClockReplacement(UIView *host);
+
+static NSHashTable<UIView *> *LGClockHostRegistry(void) {
+    if (!sClockHosts) {
+        sClockHosts = [NSHashTable weakObjectsHashTable];
+    }
+    return sClockHosts;
+}
+
+static NSUInteger LGClockLiveHostCount(void) {
+    return [LGClockHostRegistry().allObjects count];
+}
+
+static void LGEnsureClockVariableFontMetadata(void) {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        NSString *fontPath = LGClockVariableFontPath();
+        if (!fontPath.length) return;
+
+        NSURL *fontURL = [NSURL fileURLWithPath:fontPath];
+        NSData *fontData = [NSData dataWithContentsOfURL:fontURL];
+        if (![fontData isKindOfClass:[NSData class]] || fontData.length == 0) {
+            LGLog(@"clock variable font read failed path=%@", fontPath);
+            return;
+        }
+
+        CGDataProviderRef provider = CGDataProviderCreateWithCFData((__bridge CFDataRef)fontData);
+        if (!provider) {
+            LGLog(@"clock variable font provider create failed path=%@", fontPath);
+            return;
+        }
+        CGFontRef cgFont = CGFontCreateWithDataProvider(provider);
+        CGDataProviderRelease(provider);
+        if (!cgFont) {
+            LGLog(@"clock variable font CGFont create failed path=%@", fontPath);
+            return;
+        }
+        sClockVariableCGFont = cgFont;
+
+        sClockVariablePostScriptName = CFBridgingRelease(CGFontCopyPostScriptName(cgFont));
+        CFErrorRef registerError = NULL;
+        BOOL registered = CTFontManagerRegisterGraphicsFont(cgFont, &registerError);
+        if (!registered && registerError) {
+            NSError *error = CFBridgingRelease(registerError);
+            LGLog(@"clock variable font register failed postscript=%@ error=%@",
+                  sClockVariablePostScriptName ?: @"(null)",
+                  error);
+        }
+
+        CTFontRef baseFont = CTFontCreateWithGraphicsFont(cgFont, 60.0, NULL, NULL);
+        NSArray *axes = baseFont ? CFBridgingRelease(CTFontCopyVariationAxes(baseFont)) : nil;
+        if (!axes.count) {
+            LGLog(@"clock variable font has no variation axes postscript=%@", sClockVariablePostScriptName ?: @"(null)");
+        }
+        NSMutableDictionary<NSString *, NSNumber *> *ids = [NSMutableDictionary dictionary];
+        NSMutableDictionary<NSString *, NSArray<NSNumber *> *> *ranges = [NSMutableDictionary dictionary];
+        for (NSDictionary *axis in axes) {
+            NSString *name = axis[(id)kCTFontVariationAxisNameKey];
+            NSNumber *identifier = axis[(id)kCTFontVariationAxisIdentifierKey];
+            NSNumber *minimum = axis[(id)kCTFontVariationAxisMinimumValueKey];
+            NSNumber *maximum = axis[(id)kCTFontVariationAxisMaximumValueKey];
+            if (![identifier isKindOfClass:[NSNumber class]]) continue;
+
+            NSString *key = nil;
+            if (LGAxisNameMatches(name, @"weight", @"wght")) key = @"weight";
+            else if (LGAxisNameMatches(name, @"width", @"wdth")) key = @"width";
+            else if (LGAxisNameMatches(name, @"height", @"hght")) key = @"height";
+            else if (LGAxisNameMatches(name, @"soft", @"soft")) key = @"softness";
+            if (!key.length) continue;
+
+            ids[key] = identifier;
+            ranges[key] = @[
+                @([minimum isKindOfClass:[NSNumber class]] ? minimum.doubleValue : -CGFLOAT_MAX),
+                @([maximum isKindOfClass:[NSNumber class]] ? maximum.doubleValue : CGFLOAT_MAX),
+            ];
+        }
+        sClockVariableAxisIdentifiers = [ids copy];
+        sClockVariableAxisRanges = [ranges copy];
+
+        if (baseFont) CFRelease(baseFont);
+    });
+}
+
+static CGFloat LGClockClampedAxisValue(NSString *axisKey, CGFloat value) {
+    NSArray<NSNumber *> *range = sClockVariableAxisRanges[axisKey];
+    if (range.count != 2) return value;
+    CGFloat minimum = range[0].doubleValue;
+    CGFloat maximum = range[1].doubleValue;
+    return MIN(MAX(value, minimum), maximum);
+}
+
+static NSMutableDictionary *LGClockRequestedVariations(void) {
+    NSMutableDictionary *variations = [NSMutableDictionary dictionary];
+    NSNumber *weightAxis = sClockVariableAxisIdentifiers[@"weight"];
+    NSNumber *widthAxis = sClockVariableAxisIdentifiers[@"width"];
+    NSNumber *heightAxis = sClockVariableAxisIdentifiers[@"height"];
+    NSNumber *softAxis = sClockVariableAxisIdentifiers[@"softness"];
+    if (weightAxis) variations[weightAxis] = @(LGClockClampedAxisValue(@"weight", LGClockVariableFontWeight()));
+    if (widthAxis) variations[widthAxis] = @(LGClockClampedAxisValue(@"width", LGClockVariableFontWidth()));
+    if (heightAxis) variations[heightAxis] = @(LGClockClampedAxisValue(@"height", LGClockVariableFontHeight()));
+    if (softAxis) variations[softAxis] = @(LGClockClampedAxisValue(@"softness", LGClockVariableFontSoftness()));
+    return variations;
+}
+
+static NSMutableDictionary *LGClockRequestedVariationsForHeight(CGFloat heightValue) {
+    NSMutableDictionary *variations = LGClockRequestedVariations();
+    NSNumber *heightAxis = sClockVariableAxisIdentifiers[@"height"];
+    if (heightAxis) {
+        variations[heightAxis] = @(LGClockClampedAxisValue(@"height", heightValue));
+    }
+    return variations;
+}
+
+static UIFont *LGClockVariableFont(CGFloat pointSize) {
+    if (!LGIsAtLeastiOS16()) return nil;
+    if (!LGClockVariableFontEnabled()) return nil;
+    CTFontRef renderFont = LGClockVariableCTFont(pointSize);
+    if (!renderFont) return nil;
+    return (__bridge_transfer UIFont *)renderFont;
+}
+
+static CTFontRef LGClockVariableCTFont(CGFloat pointSize) {
+    return LGClockVariableCTFontForHeight(pointSize, LGClockVariableFontHeight());
+}
+
+static CTFontRef LGClockVariableCTFontForHeight(CGFloat pointSize, CGFloat heightValue) {
+    if (!LGIsAtLeastiOS16()) return NULL;
+    if (!LGClockVariableFontEnabled()) return NULL;
+    LGEnsureClockVariableFontMetadata();
+    if (!sClockVariablePostScriptName.length) return NULL;
+
+    NSMutableDictionary *variations = LGClockRequestedVariationsForHeight(heightValue);
+
+    CTFontDescriptorRef descriptor = NULL;
+    if (sClockVariablePostScriptName.length) {
+        NSMutableDictionary *attributes = [NSMutableDictionary dictionary];
+        attributes[(id)kCTFontNameAttribute] = sClockVariablePostScriptName;
+        if (variations.count > 0) {
+            attributes[(id)kCTFontVariationAttribute] = variations;
+        }
+        descriptor = CTFontDescriptorCreateWithAttributes((__bridge CFDictionaryRef)attributes);
+    }
+
+    CTFontRef renderFont = descriptor ? CTFontCreateWithFontDescriptor(descriptor, pointSize, NULL) : NULL;
+    if (descriptor) CFRelease(descriptor);
+    if (!renderFont) {
+        LGLog(@"clock variable CTFont descriptor create failed postscript=%@ size=%.2f variations=%@",
+              sClockVariablePostScriptName,
+              pointSize,
+              variations);
+        return NULL;
+    }
+    return renderFont;
 }
 
 static BOOL LGIsModernClockHost(UIView *view) {
@@ -106,11 +309,79 @@ static NSArray<UIView *> *LGClockVisibleSourceViewsForHost(UIView *host, UILabel
     return views;
 }
 
+static UILabel *LGClockPrimarySourceLabelForHost(UIView *host) {
+    NSArray<UILabel *> *labels = LGClockSourceLabelsForHost(host);
+    if (labels.count == 0) return nil;
+    if (!LGIsLegacyClockHost(host)) return labels.firstObject;
+
+    UILabel *best = nil;
+    for (UILabel *label in labels) {
+        if (!best || label.font.pointSize > best.font.pointSize) {
+            best = label;
+        }
+    }
+    return best ?: labels.firstObject;
+}
+
+static void LGStartClockDisplayLink(void) {
+    LGAssertMainThread();
+    if (sClockDisplayLinkState.link || !LGClockEnabled()) return;
+    LGStartDisplayLinkState(&sClockDisplayLinkState,
+                            LGPreferredFramesPerSecondForKey(@"Lockscreen.FPS", 30),
+                            ^{
+        for (UIView *host in LGClockHostRegistry().allObjects) {
+            if (!host.window || host.hidden || host.alpha <= 0.01f || host.layer.opacity <= 0.01f) continue;
+            if (!LGIsClockHost(host)) continue;
+            LGApplyClockReplacement(host);
+        }
+    });
+}
+
+static void LGStopClockDisplayLink(void) {
+    LGAssertMainThread();
+    LGStopDisplayLinkState(&sClockDisplayLinkState);
+}
+
+static void LGAttachClockHostIfNeeded(UIView *host) {
+    LGAssertMainThread();
+    if (!host || !LGIsClockHost(host)) return;
+    if ([objc_getAssociatedObject(host, kLGClockAttachedKey) boolValue]) return;
+    objc_setAssociatedObject(host, kLGClockAttachedKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    [LGClockHostRegistry() addObject:host];
+    LGStartClockDisplayLink();
+}
+
+static void LGDetachClockHostIfNeeded(UIView *host) {
+    LGAssertMainThread();
+    if (!host) return;
+    if (![objc_getAssociatedObject(host, kLGClockAttachedKey) boolValue]) return;
+    objc_setAssociatedObject(host, kLGClockAttachedKey, nil, OBJC_ASSOCIATION_ASSIGN);
+    [LGClockHostRegistry() removeObject:host];
+    if (LGClockLiveHostCount() == 0) {
+        LGStopClockDisplayLink();
+    }
+}
+
 static UIFont *LGClockPreferredRenderFont(UILabel *label, UIView *host) {
     UIFont *sourceFont = label.font ?: [UIFont systemFontOfSize:84.0 weight:UIFontWeightBold];
+    CGFloat pointSize = sourceFont.pointSize;
     if (LGIsLegacyClockHost(host)) {
-        CGFloat pointSize = MAX(sourceFont.pointSize * LGClockLegacySizeBoost(), 58.0);
-        return [UIFont systemFontOfSize:pointSize weight:LGClockLegacyFontWeight()];
+        pointSize = MAX(sourceFont.pointSize * LGClockLegacySizeBoost(), 58.0);
+    }
+
+    UIFont *variableFont = LGClockVariableFont(pointSize);
+    if (variableFont) return variableFont;
+    if (LGIsLegacyClockHost(host)) {
+        UIFont *baseFont = [UIFont systemFontOfSize:pointSize weight:LGClockLegacyFontWeight()];
+        NSString *style = LG_prefString(@"Lockscreen.Clock.LegacyFontStyle", LGClockLegacyFontStyleCurrent);
+        if ([style isEqualToString:LGClockLegacyFontStyleRounded]) {
+            UIFontDescriptor *descriptor = [baseFont.fontDescriptor fontDescriptorWithDesign:UIFontDescriptorSystemDesignRounded];
+            if (descriptor) {
+                UIFont *roundedFont = [UIFont fontWithDescriptor:descriptor size:pointSize];
+                if (roundedFont) return roundedFont;
+            }
+        }
+        return baseFont;
     }
     return sourceFont;
 }
@@ -142,13 +413,243 @@ static UIScrollView *LGClockAncestorScrollView(UIView *view) {
     return nil;
 }
 
+static CGFloat LGClockResolvedLineHeight(UIFont *font, id ctFontObject) {
+    if (ctFontObject) {
+        CTFontRef ctFont = (__bridge CTFontRef)ctFontObject;
+        return ceil(CTFontGetAscent(ctFont) + CTFontGetDescent(ctFont) + CTFontGetLeading(ctFont));
+    }
+    return ceil(font.lineHeight);
+}
+
+static BOOL LGClockContainerClips(UIView *view) {
+    if (!view) return NO;
+    return view.clipsToBounds || view.layer.masksToBounds;
+}
+
+static BOOL LGClockViewIsVisiblyPresent(UIView *view) {
+    if (!view || !view.window || view.hidden) return NO;
+    if (view.alpha <= 0.01 || view.layer.opacity <= 0.01f) return NO;
+    if (CGRectIsEmpty(view.bounds)) return NO;
+    return YES;
+}
+
+static BOOL LGClockIsNotificationObstacleView(UIView *view) {
+    if (!LGClockViewIsVisiblyPresent(view)) return NO;
+    if (LGHasAncestorClassNamed(view, @"NCNotificationShortLookView")) return NO;
+    if (LGHasAncestorClassNamed(view, @"NCNotificationLongLookView")) return NO;
+    NSString *className = NSStringFromClass(view.class);
+    return [className isEqualToString:@"PLPlatterView"]
+        || [className isEqualToString:@"NCNotificationShortLookView"]
+        || [className isEqualToString:@"NCNotificationLongLookView"];
+}
+
+static CGFloat LGClockNearestNotificationTop(UIView *host, UIView *container, CGRect sourceFrame) {
+    if (!host || !container) return CGFLOAT_MAX;
+
+    UIView *scanRoot = container.window ?: container;
+    CGRect clockBand = CGRectInset(sourceFrame, -32.0, 0.0);
+    __block CGFloat nearestTop = CGFLOAT_MAX;
+
+    LGTraverseViews(scanRoot, ^(UIView *view) {
+        if (view == host || [view isDescendantOfView:host]) return;
+        if (!LGClockIsNotificationObstacleView(view)) return;
+
+        CGRect obstacleFrame = [view convertRect:view.bounds toView:container];
+        if (CGRectIsEmpty(obstacleFrame)) return;
+        if (CGRectGetMaxX(obstacleFrame) < CGRectGetMinX(clockBand) ||
+            CGRectGetMinX(obstacleFrame) > CGRectGetMaxX(clockBand)) {
+            return;
+        }
+        if (CGRectGetMaxY(obstacleFrame) <= CGRectGetMinY(sourceFrame) + 1.0) return;
+
+        nearestTop = MIN(nearestTop, CGRectGetMinY(obstacleFrame));
+    });
+
+    return nearestTop;
+}
+
+static CGFloat LGClockModernGlyphBottomForSourceFrame(CGRect sourceFrame,
+                                                      NSString *text,
+                                                      UIFont *font,
+                                                      id ctFontObject,
+                                                      CGFloat topInset) {
+    if (CGRectIsEmpty(sourceFrame) || text.length == 0 || !font) return CGRectGetMaxY(sourceFrame);
+
+    CGRect expanded = LGClockExpandedModernFrameForRect(sourceFrame, nil, font, ctFontObject);
+    NSDictionary *attrs = @{
+        (__bridge id)kCTFontAttributeName: ctFontObject ?: font,
+        (__bridge id)kCTForegroundColorAttributeName: (__bridge id)UIColor.whiteColor.CGColor,
+    };
+    NSAttributedString *attributed = [[NSAttributedString alloc] initWithString:text attributes:attrs];
+    CTLineRef line = CTLineCreateWithAttributedString((__bridge CFAttributedStringRef)attributed);
+
+    CGFloat ascent = 0.0;
+    CGFloat descent = 0.0;
+    CGFloat leading = 0.0;
+    CTLineGetTypographicBounds(line, &ascent, &descent, &leading);
+    CGRect glyphBounds = CTLineGetBoundsWithOptions(line, kCTLineBoundsUseGlyphPathBounds);
+    if (CGRectIsNull(glyphBounds) || CGRectIsEmpty(glyphBounds)) {
+        glyphBounds = CGRectMake(0.0, -descent, 0.0, ascent + descent);
+    }
+    CGFloat baseline = floor(CGRectGetHeight(expanded) - MAX(0.0, topInset) - ascent);
+    CGFloat localBottom = CGRectGetHeight(expanded) - (baseline + CGRectGetMinY(glyphBounds));
+    CFRelease(line);
+    return CGRectGetMinY(expanded) + localBottom;
+}
+
+static CGFloat LGClockLineWidthForText(NSString *text, UIFont *font, id ctFontObject) {
+    if (text.length == 0 || !font) return 0.0;
+    NSDictionary *attrs = @{
+        (__bridge id)kCTFontAttributeName: ctFontObject ?: font,
+        (__bridge id)kCTForegroundColorAttributeName: (__bridge id)UIColor.whiteColor.CGColor,
+    };
+    NSAttributedString *attributed = [[NSAttributedString alloc] initWithString:text attributes:attrs];
+    CTLineRef line = CTLineCreateWithAttributedString((__bridge CFAttributedStringRef)attributed);
+    CGFloat ascent = 0.0;
+    CGFloat descent = 0.0;
+    CGFloat leading = 0.0;
+    CGFloat width = (CGFloat)CTLineGetTypographicBounds(line, &ascent, &descent, &leading);
+    CFRelease(line);
+    return ceil(width);
+}
+
+static CGFloat LGClockDynamicHeightAxisForContext(UILabel *label,
+                                                  UIView *host,
+                                                  UIView *container,
+                                                  CGRect sourceFrame) {
+    CGFloat requestedHeight = LGClockVariableFontHeight();
+    if (!LGClockVariableFontEnabled() || !LGIsModernClockHost(host) || !label.text.length) return requestedHeight;
+
+    CGFloat minimumHeight = 100.0;
+    NSArray<NSNumber *> *heightRange = sClockVariableAxisRanges[@"height"];
+    if (heightRange.count == 2) {
+        minimumHeight = MAX(minimumHeight, heightRange[0].doubleValue);
+    }
+    if (requestedHeight <= minimumHeight + 0.5) return requestedHeight;
+
+    CGFloat nearestTop = LGClockNearestNotificationTop(host, container, sourceFrame);
+    if (nearestTop == CGFLOAT_MAX) return requestedHeight;
+
+    UIFont *sourceFont = label.font ?: [UIFont systemFontOfSize:84.0 weight:UIFontWeightBold];
+    CGFloat pointSize = sourceFont.pointSize;
+    static const CGFloat kClockBottomClearance = 10.0;
+
+    CTFontRef requestedCTFont = LGClockVariableCTFontForHeight(pointSize, requestedHeight);
+    id requestedFontObject = requestedCTFont ? (__bridge_transfer id)requestedCTFont : nil;
+    UIFont *requestedFont = requestedFontObject ? (UIFont *)requestedFontObject : sourceFont;
+    CGFloat requestedBottom = LGClockModernGlyphBottomForSourceFrame(sourceFrame,
+                                                                     label.text,
+                                                                     requestedFont,
+                                                                     requestedFontObject,
+                                                                     CGRectGetMinY(label.bounds));
+    if (requestedBottom + kClockBottomClearance <= nearestTop) return requestedHeight;
+
+    CGFloat low = minimumHeight;
+    CGFloat high = requestedHeight;
+    for (NSUInteger i = 0; i < 8; i++) {
+        CGFloat mid = floor((low + high) * 0.5);
+        CTFontRef midCTFont = LGClockVariableCTFontForHeight(pointSize, mid);
+        id midFontObject = midCTFont ? (__bridge_transfer id)midCTFont : nil;
+        UIFont *midFont = midFontObject ? (UIFont *)midFontObject : sourceFont;
+        CGFloat midBottom = LGClockModernGlyphBottomForSourceFrame(sourceFrame,
+                                                                   label.text,
+                                                                   midFont,
+                                                                   midFontObject,
+                                                                   CGRectGetMinY(label.bounds));
+        if (midBottom + kClockBottomClearance <= nearestTop) {
+            low = mid;
+        } else {
+            high = mid;
+        }
+    }
+
+    return floor(low);
+}
+
+static CGRect LGClockExpandedModernFrameForRect(CGRect frame, UIView *host, UIFont *font, id ctFontObject) {
+    if (CGRectIsEmpty(frame)) return frame;
+
+    CGFloat resolvedLineHeight = MAX(CGRectGetHeight(frame), LGClockResolvedLineHeight(font, ctFontObject));
+    CGFloat extraBottom = MAX(18.0, ceil(resolvedLineHeight - CGRectGetHeight(frame)) + ceil(resolvedLineHeight * 0.18) + 18.0);
+    CGRect expanded = frame;
+    expanded.size.height += extraBottom;
+
+    if (host) {
+        CGFloat minY = CGRectGetMinY(host.bounds);
+        CGFloat maxY = CGRectGetMaxY(host.bounds);
+        if (CGRectGetMinY(expanded) < minY) {
+            expanded.origin.y = minY;
+        }
+        if (CGRectGetMaxY(expanded) > maxY) {
+            CGFloat overflow = CGRectGetMaxY(expanded) - maxY;
+            expanded.size.height = MAX(0.0, expanded.size.height - overflow);
+        }
+    }
+    return expanded;
+}
+
+static CGRect LGClockExpandedLegacyFrameForRect(CGRect frame,
+                                                UIView *host,
+                                                NSString *text,
+                                                UIFont *font,
+                                                id ctFontObject) {
+    if (CGRectIsEmpty(frame)) return frame;
+
+    CGRect expanded = LGClockExpandedModernFrameForRect(frame, nil, font, ctFontObject);
+    CGFloat textWidth = LGClockLineWidthForText(text, font, ctFontObject);
+    CGFloat desiredWidth = MAX(CGRectGetWidth(expanded), textWidth + 18.0);
+    if (desiredWidth > CGRectGetWidth(expanded)) {
+        CGFloat delta = desiredWidth - CGRectGetWidth(expanded);
+        expanded.origin.x -= floor(delta * 0.5);
+        expanded.size.width = desiredWidth;
+    }
+
+    if (host) {
+        CGFloat minX = CGRectGetMinX(host.bounds);
+        CGFloat maxX = CGRectGetMaxX(host.bounds);
+        if (CGRectGetMinX(expanded) < minX) {
+            expanded.origin.x = minX;
+        }
+        if (CGRectGetMaxX(expanded) > maxX) {
+            CGFloat overflow = CGRectGetMaxX(expanded) - maxX;
+            expanded.size.width = MAX(0.0, expanded.size.width - overflow);
+        }
+        if (CGRectGetMaxY(expanded) > CGRectGetMaxY(host.bounds)) {
+            CGFloat overflow = CGRectGetMaxY(expanded) - CGRectGetMaxY(host.bounds);
+            expanded.size.height = MAX(0.0, expanded.size.height - overflow);
+        }
+    }
+    return expanded;
+}
+
+static UIView *LGClockBestModernOverlayContainer(UIView *host, UILabel *label, UIFont *font, id ctFontObject) {
+    if (!host || !label) return host;
+
+    for (UIView *candidate = host.superview; candidate; candidate = candidate.superview) {
+        CGRect sourceFrame = [label convertRect:label.bounds toView:candidate];
+        CGRect expanded = LGClockExpandedModernFrameForRect(sourceFrame, nil, font, ctFontObject);
+        BOOL fitsVertically = CGRectGetMinY(expanded) >= 0.0 && CGRectGetMaxY(expanded) <= CGRectGetHeight(candidate.bounds);
+        BOOL fitsHorizontally = CGRectGetMinX(expanded) >= -1.0 && CGRectGetMaxX(expanded) <= CGRectGetWidth(candidate.bounds) + 1.0;
+        if (!LGClockContainerClips(candidate) && fitsVertically && fitsHorizontally) {
+            return candidate;
+        }
+        if (candidate == host.window) break;
+    }
+
+    return host.window ?: host.superview ?: host;
+}
+
 @interface LGClockGlassView : UIView
 @property (nonatomic, strong) LiquidGlassView *glassView;
 @property (nonatomic, strong) UIView *tintView;
 @property (nonatomic, copy) NSString *displayText;
 @property (nonatomic, copy) NSAttributedString *displayAttributedText;
 @property (nonatomic, strong) UIFont *displayFont;
+@property (nonatomic, strong) id displayCTFont;
 @property (nonatomic, assign) NSTextAlignment displayAlignment;
+@property (nonatomic, assign) CGFloat displayTopInset;
+@property (nonatomic, weak) UIView *clockHost;
+@property (nonatomic, weak) UILabel *sourceLabel;
 - (void)syncFromSourceLabel:(UILabel *)label;
 @end
 
@@ -196,39 +697,64 @@ static UIScrollView *LGClockAncestorScrollView(UIView *view) {
 }
 
 - (NSAttributedString *)lg_maskAttributedString {
+    if (LGClockVariableFontEnabled() && self.displayText.length > 0 && (self.displayCTFont || self.displayFont)) {
+        UIFont *font = self.displayFont ?: [UIFont systemFontOfSize:84.0 weight:UIFontWeightBold];
+        id ctFontObject = self.displayCTFont;
+        CTFontRef ctFont = NULL;
+        if (!ctFontObject) {
+            ctFont = CTFontCreateWithFontDescriptor((__bridge CTFontDescriptorRef)font.fontDescriptor,
+                                                    font.pointSize,
+                                                    NULL);
+            ctFontObject = (__bridge id)ctFont;
+        }
+        NSDictionary *attrs = @{
+            (__bridge id)kCTFontAttributeName: ctFontObject ?: font,
+            (__bridge id)kCTForegroundColorAttributeName: (__bridge id)UIColor.whiteColor.CGColor,
+        };
+        NSAttributedString *string = [[NSAttributedString alloc] initWithString:self.displayText ?: @"" attributes:attrs];
+        if (ctFont) CFRelease(ctFont);
+        return string;
+    }
+
     if (self.displayAttributedText.length > 0) {
         NSMutableAttributedString *copy = [self.displayAttributedText mutableCopy];
         [copy beginEditing];
+        NSRange fullRange = NSMakeRange(0, copy.length);
         [copy enumerateAttribute:NSFontAttributeName
-                         inRange:NSMakeRange(0, copy.length)
+                         inRange:fullRange
                          options:0
                       usingBlock:^(id value, NSRange range, BOOL *stop) {
             UIFont *font = [value isKindOfClass:[UIFont class]] ? (UIFont *)value : self.displayFont;
             if (!font) font = [UIFont systemFontOfSize:84.0 weight:UIFontWeightBold];
+            [copy removeAttribute:NSFontAttributeName range:range];
             CTFontRef ctFont = CTFontCreateWithFontDescriptor((__bridge CTFontDescriptorRef)font.fontDescriptor,
                                                               font.pointSize,
                                                               NULL);
             if (ctFont) {
-                [copy removeAttribute:NSFontAttributeName range:range];
                 [copy addAttribute:(__bridge NSString *)kCTFontAttributeName value:(__bridge id)ctFont range:range];
                 CFRelease(ctFont);
             }
         }];
-        [copy removeAttribute:NSForegroundColorAttributeName range:NSMakeRange(0, copy.length)];
-        [copy removeAttribute:(__bridge NSString *)kCTForegroundColorAttributeName range:NSMakeRange(0, copy.length)];
+        [copy removeAttribute:NSForegroundColorAttributeName range:fullRange];
+        [copy removeAttribute:(__bridge NSString *)kCTForegroundColorAttributeName range:fullRange];
         [copy addAttribute:(__bridge NSString *)kCTForegroundColorAttributeName
                      value:(id)UIColor.whiteColor.CGColor
-                     range:NSMakeRange(0, copy.length)];
+                     range:fullRange];
         [copy endEditing];
         return copy;
     }
 
     UIFont *font = self.displayFont ?: [UIFont systemFontOfSize:84.0 weight:UIFontWeightBold];
-    CTFontRef ctFont = CTFontCreateWithFontDescriptor((__bridge CTFontDescriptorRef)font.fontDescriptor,
-                                                      font.pointSize,
-                                                      NULL);
+    id ctFontObject = self.displayCTFont;
+    CTFontRef ctFont = NULL;
+    if (!ctFontObject) {
+        ctFont = CTFontCreateWithFontDescriptor((__bridge CTFontDescriptorRef)font.fontDescriptor,
+                                                font.pointSize,
+                                                NULL);
+        ctFontObject = (__bridge id)ctFont;
+    }
     NSDictionary *attrs = @{
-        (__bridge id)kCTFontAttributeName: (__bridge id)ctFont,
+        (__bridge id)kCTFontAttributeName: ctFontObject ?: font,
         (__bridge id)kCTForegroundColorAttributeName: (__bridge id)UIColor.whiteColor.CGColor,
     };
     NSAttributedString *string = [[NSAttributedString alloc] initWithString:self.displayText ?: @"" attributes:attrs];
@@ -250,8 +776,11 @@ static UIScrollView *LGClockAncestorScrollView(UIView *view) {
     CGContextTranslateCTM(ctx, 0.0, bounds.size.height);
     CGContextScaleCTM(ctx, 1.0, -1.0);
 
-    UIView *host = self.superview;
-    while (host && !LGIsClockHost(host)) host = host.superview;
+    UIView *host = self.clockHost;
+    if (!host) {
+        host = self.superview;
+        while (host && !LGIsClockHost(host)) host = host.superview;
+    }
     BOOL legacyHost = LGIsLegacyClockHost(host);
 
     NSAttributedString *attributed = [self lg_maskAttributedString];
@@ -274,8 +803,13 @@ static UIScrollView *LGClockAncestorScrollView(UIView *view) {
             x = 0.0;
             break;
     }
-    CGFloat lineHeight = ascent + descent + leading;
-    CGFloat baseline = floor((bounds.size.height - lineHeight) * 0.5 + descent);
+    CGFloat baseline = 0.0;
+    if (legacyHost) {
+        baseline = floor(bounds.size.height - ascent);
+    } else {
+        CGFloat topInset = MAX(0.0, self.displayTopInset);
+        baseline = floor(bounds.size.height - topInset - ascent);
+    }
     if (legacyHost) {
         CGFloat embolden = MAX(0.0, LGClockLegacyEmbolden());
         static const CGPoint offsets[] = {
@@ -329,18 +863,43 @@ static UIScrollView *LGClockAncestorScrollView(UIView *view) {
 - (void)syncFromSourceLabel:(UILabel *)label {
     if (!label) return;
     self.displayText = label.text ?: @"";
-    UIView *host = self.superview;
-    while (host && !LGIsClockHost(host)) host = host.superview;
+    self.sourceLabel = label;
+    UIView *host = self.clockHost;
+    if (!host) {
+        host = self.superview;
+        while (host && !LGIsClockHost(host)) host = host.superview;
+    }
     if (LGIsLegacyClockHost(host)) {
-        self.frame = CGRectOffset(host.bounds, 0.0, -LGClockLegacyGap());
+        UIView *container = self.superview ?: LGClockBestModernOverlayContainer(host,
+                                                                                label,
+                                                                                LGClockPreferredRenderFont(label, host),
+                                                                                nil);
+        CGRect sourceFrame = [label convertRect:label.bounds toView:container];
+        self.displayCTFont = nil;
+        self.displayFont = LGClockPreferredRenderFont(label, host);
+        self.frame = LGClockExpandedLegacyFrameForRect(sourceFrame,
+                                                       container,
+                                                       self.displayText,
+                                                       self.displayFont,
+                                                       nil);
         self.displayAlignment = NSTextAlignmentCenter;
         self.displayAttributedText = nil;
+        self.displayTopInset = 0.0;
     } else {
-        self.frame = label.frame;
+        UIView *container = self.superview ?: host.window ?: host;
+        CGRect sourceFrame = [label convertRect:label.bounds toView:container];
+        UIFont *sourceFont = label.font ?: [UIFont systemFontOfSize:84.0 weight:UIFontWeightBold];
+        CGFloat pointSize = sourceFont.pointSize;
+        CGFloat dynamicHeight = LGClockDynamicHeightAxisForContext(label, host, container, sourceFrame);
+        CTFontRef renderCTFont = LGClockVariableCTFontForHeight(pointSize, dynamicHeight);
+        id renderFontObject = renderCTFont ? (__bridge_transfer id)renderCTFont : nil;
+        self.displayCTFont = renderFontObject;
+        self.displayFont = renderFontObject ? (UIFont *)renderFontObject : LGClockPreferredRenderFont(label, host);
+        self.frame = LGClockExpandedModernFrameForRect(sourceFrame, container, self.displayFont, self.displayCTFont);
         self.displayAlignment = label.textAlignment;
         self.displayAttributedText = label.attributedText;
+        self.displayTopInset = MAX(0.0, CGRectGetMinY(label.bounds));
     }
-    self.displayFont = LGClockPreferredRenderFont(label, host);
     self.glassView.bezelWidth = LGClockBezelWidth();
     self.glassView.glassThickness = LGClockGlassThickness();
     self.glassView.refractionScale = LGClockRefractionScale();
@@ -408,10 +967,15 @@ static UIScrollView *LGClockAncestorScrollView(UIView *view) {
     LGClockGlassView *overlay = self.overlay;
     if (!host.window || !overlay || !overlay.superview) return;
 
-    overlay.glassView.wallpaperImage = LGClockWallpaperSource();
-    overlay.glassView.wallpaperOrigin = LG_getLockscreenWallpaperOrigin();
-    [overlay.glassView updateOrigin];
-    [overlay setNeedsLayout];
+    UILabel *sourceLabel = overlay.sourceLabel;
+    if (sourceLabel) {
+        [overlay syncFromSourceLabel:sourceLabel];
+    } else {
+        overlay.glassView.wallpaperImage = LGClockWallpaperSource();
+        overlay.glassView.wallpaperOrigin = LG_getLockscreenWallpaperOrigin();
+        [overlay.glassView updateOrigin];
+        [overlay setNeedsLayout];
+    }
 }
 
 @end
@@ -431,6 +995,7 @@ static void LGDetachClockScrollObserver(UIView *host) {
     LGClockScrollObserver *observer = objc_getAssociatedObject(host, kLGClockScrollObserverKey);
     [observer invalidate];
     objc_setAssociatedObject(host, kLGClockScrollObserverKey, nil, OBJC_ASSOCIATION_ASSIGN);
+    LGDetachClockHostIfNeeded(host);
 }
 
 static void LGEnsureClockScrollObserver(UIView *host, LGClockGlassView *overlay) {
@@ -454,11 +1019,9 @@ static void LGEnsureClockScrollObserver(UIView *host, LGClockGlassView *overlay)
 static void LGApplyClockReplacement(UIView *host) {
     if (!LGIsClockHost(host)) return;
 
-    NSArray<UILabel *> *sourceLabels = LGClockSourceLabelsForHost(host);
-    UILabel *sourceLabel = sourceLabels.firstObject;
+    UILabel *sourceLabel = LGClockPrimarySourceLabelForHost(host);
     NSArray<UIView *> *visibleSourceViews = LGClockVisibleSourceViewsForHost(host, sourceLabel);
     LGClockGlassView *overlay = objc_getAssociatedObject(host, kLGClockOverlayKey);
-
     if (!LGClockEnabled() || !host.window || !sourceLabel) {
         [overlay removeFromSuperview];
         objc_setAssociatedObject(host, kLGClockOverlayKey, nil, OBJC_ASSOCIATION_ASSIGN);
@@ -477,16 +1040,26 @@ static void LGApplyClockReplacement(UIView *host) {
         LGSetLayerTreeOpacity(view.layer, 0.0f);
     }
 
+    UIView *overlayContainer = LGClockBestModernOverlayContainer(host,
+                                                                 sourceLabel,
+                                                                 LGClockPreferredRenderFont(sourceLabel, host),
+                                                                 nil);
+
     if (!overlay) {
         overlay = [[LGClockGlassView alloc] initWithFrame:sourceLabel.frame];
         objc_setAssociatedObject(host, kLGClockOverlayKey, overlay, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        [host addSubview:overlay];
+        [overlayContainer addSubview:overlay];
+    } else if (overlay.superview != overlayContainer) {
+        [overlay removeFromSuperview];
+        [overlayContainer addSubview:overlay];
     }
 
+    overlay.clockHost = host;
     LGAttachLockHostIfNeeded(host);
+    LGAttachClockHostIfNeeded(host);
     LGEnsureClockScrollObserver(host, overlay);
     [overlay syncFromSourceLabel:sourceLabel];
-    [host bringSubviewToFront:overlay];
+    [overlay.superview bringSubviewToFront:overlay];
 }
 
 static void LGRefreshClockHosts(void) {
@@ -503,6 +1076,21 @@ static void LGRefreshClockHosts(void) {
         }
     } else {
         for (UIWindow *window in LGApplicationWindows(app)) refreshWindow(window);
+    }
+}
+
+static void LGRefreshRegisteredClockHosts(void) {
+    LGAssertMainThread();
+    for (UIView *host in LGClockHostRegistry().allObjects) {
+        if (!host.window) continue;
+        LGApplyClockReplacement(host);
+    }
+    if (LGClockLiveHostCount() == 0) {
+        LGStopClockDisplayLink();
+    } else if (LGClockEnabled()) {
+        LGStartClockDisplayLink();
+    } else {
+        LGStopClockDisplayLink();
     }
 }
 
@@ -565,6 +1153,7 @@ static void LGRefreshClockHosts(void) {
     LGObservePreferenceChanges(^{
         dispatch_async(dispatch_get_main_queue(), ^{
             LGRefreshClockHosts();
+            LGRefreshRegisteredClockHosts();
         });
     });
     %init(LGClockSpringBoard);

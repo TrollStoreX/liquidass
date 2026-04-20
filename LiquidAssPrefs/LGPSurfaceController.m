@@ -1138,10 +1138,17 @@
 
     if (startIndex >= items.count) return;
 
-    UIView *panel = [self groupedPanelForItems:[items subarrayWithRange:NSMakeRange(startIndex, items.count - startIndex)]];
-    BOOL enabled = enabledItem ? [LGReadPreference(enabledItem[@"key"], enabledItem[@"default"]) boolValue] : YES;
-    if (enabledItem[@"key"]) {
-        objc_setAssociatedObject(panel, kLGControlledByEnabledKey, enabledItem[@"key"], OBJC_ASSOCIATION_COPY_NONATOMIC);
+    NSArray<NSDictionary *> *panelItems = [items subarrayWithRange:NSMakeRange(startIndex, items.count - startIndex)];
+    UIView *panel = [self groupedPanelForItems:panelItems];
+    NSString *controllerKey = enabledItem[@"key"];
+    id controllerDefault = enabledItem[@"default"];
+    if (!controllerKey.length) {
+        controllerKey = panelItems.firstObject[@"enabled_key"];
+        controllerDefault = panelItems.firstObject[@"enabled_default"];
+    }
+    BOOL enabled = controllerKey.length ? [LGReadPreference(controllerKey, controllerDefault ?: @YES) boolValue] : YES;
+    if (controllerKey.length) {
+        objc_setAssociatedObject(panel, kLGControlledByEnabledKey, controllerKey, OBJC_ASSOCIATION_COPY_NONATOMIC);
     }
     panel.alpha = enabled ? 1.0 : 0.42;
     panel.userInteractionEnabled = enabled;

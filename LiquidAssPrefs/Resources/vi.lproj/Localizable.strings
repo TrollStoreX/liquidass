@@ -14,9 +14,15 @@
 "prefs.control.fps_limit" = "Giới hạn tốc độ khung hình";
 "prefs.control.rendering_method" = "Phương thức kết xuất";
 "prefs.control.font_weight" = "Độ đậm phông chữ";
+"prefs.control.font_style" = "Kiểu phông chữ";
 "prefs.control.size_boost" = "Tăng kích thước";
 "prefs.control.embolden" = "Làm dày";
 "prefs.control.clock_gap" = "Khoảng cách đồng hồ";
+"prefs.control.variable_font" = "Đồng hồ iOS 26";
+"prefs.control.variable_font_weight" = "Độ đậm";
+"prefs.control.variable_font_width" = "Độ rộng";
+"prefs.control.variable_font_height" = "Chiều cao";
+"prefs.control.variable_font_softness" = "Độ mềm";
 "prefs.control.floating_radius" = "Bo góc khi nổi";
 "prefs.control.full_screen_radius" = "Bo góc toàn màn hình";
 "prefs.control.home_button_radius" = "Bo góc cho máy có nút Home";
@@ -43,9 +49,17 @@
 "prefs.subtitle.row_inset" = "Lề trái và phải cho các hàng thao tác.";
 "prefs.subtitle.rendering_method" = "Chọn xem bề mặt này lấy mẫu từ ảnh chụp đã lưu hay từ chụp nền trực tiếp.";
 "prefs.subtitle.font_weight" = "Độ đậm dùng cho đồng hồ kính kiểu cũ trên iOS 15 trở xuống.";
+"prefs.subtitle.font_style" = "Chuyển đồng hồ iOS 15 kiểu cũ giữa kiểu hiện tại và kiểu bo tròn.";
 "prefs.subtitle.size_boost" = "Phóng to đồng hồ kiểu cũ so với bố cục mặc định.";
 "prefs.subtitle.embolden" = "Làm dày giả mask đồng hồ kiểu cũ để nhìn đầy hơn.";
 "prefs.subtitle.clock_gap" = "Khoảng cách dọc giữa đồng hồ kiểu cũ và dòng ngày tháng.";
+"prefs.subtitle.variable_font" = "Dùng phông đồng hồ thích ứng kiểu iOS 26 cho đồng hồ kính khi có sẵn.";
+"prefs.subtitle.variable_font_weight" = "Giá trị trục độ đậm của phông đồng hồ iOS 26.";
+"prefs.subtitle.variable_font_width" = "Giá trị trục độ rộng của phông đồng hồ iOS 26.";
+"prefs.subtitle.variable_font_height" = "Giá trị trục chiều cao của phông đồng hồ iOS 26.";
+"prefs.subtitle.variable_font_softness" = "Giá trị trục độ mềm của phông đồng hồ iOS 26.";
+"prefs.font_style.current.title" = "Thường";
+"prefs.font_style.rounded.title" = "Bo tròn";
 "prefs.subtitle.global_enabled" = "Công tắc chính cho mọi bề mặt.";
 
 "prefs.rendering.snapshot.title" = "Ảnh chụp";

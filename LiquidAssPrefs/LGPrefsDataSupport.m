@@ -276,6 +276,13 @@ NSDictionary *LGSliderSetting(NSString *key, NSString *title, NSString *subtitle
     };
 }
 
+static NSDictionary *LGSettingControlledByKey(NSDictionary *item, NSString *enabledKey, id enabledDefault) {
+    NSMutableDictionary *copy = [item mutableCopy];
+    if (enabledKey.length) copy[@"enabled_key"] = enabledKey;
+    if (enabledDefault) copy[@"enabled_default"] = enabledDefault;
+    return [copy copy];
+}
+
 NSDictionary *LGGlassEnabledSetting(NSString *key, BOOL fallback) {
     NSMutableDictionary *item = [LGSwitchSetting(key,
                                                  LGLocalized(@"prefs.control.enabled"),
@@ -549,36 +556,91 @@ NSArray<NSDictionary *> *LGLockscreenItems(void) {
     [items addObject:LGGlassRefractionSetting(@"Lockscreen.Clock.RefractionScale", 1.5, 0.0, 5.0, 2)];
     [items addObject:LGGlassSpecularSetting(@"Lockscreen.Clock.SpecularOpacity", 0.6, 0.0, 1.0, 2)];
     [items addObject:LGGlassQualitySetting(@"Lockscreen.Clock.WallpaperScale", 1.0, 0.1, 1.0, 2)];
+    if (LGIsAtLeastiOS16()) {
+        [items addObject:LGSectionSetting(@"", @"")];
+        [items addObject:LGSettingControlledByKey(LGSwitchSetting(@"Lockscreen.Clock.VariableFont.Enabled",
+                                                                  LGLocalized(@"prefs.control.variable_font"),
+                                                                  LGLocalized(@"prefs.subtitle.variable_font"),
+                                                                  YES),
+                                                 @"Lockscreen.Clock.Enabled",
+                                                 @YES)];
+        [items addObject:LGSettingControlledByKey(LGSliderSetting(@"Lockscreen.Clock.VariableFont.Weight",
+                                                                  LGLocalized(@"prefs.control.variable_font_weight"),
+                                                                  LGLocalized(@"prefs.subtitle.variable_font_weight"),
+                                                                  640.0,
+                                                                  1.0,
+                                                                  1000.0,
+                                                                  0),
+                                                 @"Lockscreen.Clock.Enabled",
+                                                 @YES)];
+        [items addObject:LGSettingControlledByKey(LGSliderSetting(@"Lockscreen.Clock.VariableFont.Width",
+                                                                  LGLocalized(@"prefs.control.variable_font_width"),
+                                                                  LGLocalized(@"prefs.subtitle.variable_font_width"),
+                                                                  92.0,
+                                                                  60.0,
+                                                                  100.0,
+                                                                  0),
+                                                 @"Lockscreen.Clock.Enabled",
+                                                 @YES)];
+        [items addObject:LGSettingControlledByKey(LGSliderSetting(@"Lockscreen.Clock.VariableFont.Height",
+                                                                  LGLocalized(@"prefs.control.variable_font_height"),
+                                                                  LGLocalized(@"prefs.subtitle.variable_font_height"),
+                                                                  112.0,
+                                                                  100.0,
+                                                                  500.0,
+                                                                  0),
+                                                 @"Lockscreen.Clock.Enabled",
+                                                 @YES)];
+        [items addObject:LGSettingControlledByKey(LGSliderSetting(@"Lockscreen.Clock.VariableFont.Softness",
+                                                                  LGLocalized(@"prefs.control.variable_font_softness"),
+                                                                  LGLocalized(@"prefs.subtitle.variable_font_softness"),
+                                                                  56.0,
+                                                                  0.0,
+                                                                  100.0,
+                                                                  0),
+                                                 @"Lockscreen.Clock.Enabled",
+                                                 @YES)];
+    }
 
     if (!LGIsAtLeastiOS16()) {
-        [items addObject:LGSliderSetting(@"Lockscreen.Clock.LegacyFontWeight",
-                                         LGLocalized(@"prefs.control.font_weight"),
-                                         LGLocalized(@"prefs.subtitle.font_weight"),
-                                         UIFontWeightHeavy,
-                                         0.0,
-                                         1.0,
-                                         2)];
-        [items addObject:LGSliderSetting(@"Lockscreen.Clock.LegacySizeBoost",
-                                         LGLocalized(@"prefs.control.size_boost"),
-                                         LGLocalized(@"prefs.subtitle.size_boost"),
-                                         1.05,
-                                         0.8,
-                                         1.3,
-                                         2)];
-        [items addObject:LGSliderSetting(@"Lockscreen.Clock.LegacyEmbolden",
-                                         LGLocalized(@"prefs.control.embolden"),
-                                         LGLocalized(@"prefs.subtitle.embolden"),
-                                         0.35,
-                                         0.0,
-                                         1.0,
-                                         2)];
-        [items addObject:LGSliderSetting(@"Lockscreen.Clock.LegacyGap",
-                                         LGLocalized(@"prefs.control.clock_gap"),
-                                         LGLocalized(@"prefs.subtitle.clock_gap"),
-                                         8.0,
-                                         0.0,
-                                         24.0,
-                                         1)];
+        [items addObject:LGSectionSetting(@"", @"")];
+        [items addObject:LGSettingControlledByKey(LGMenuSetting(@"Lockscreen.Clock.LegacyFontStyle",
+                                                                LGLocalized(@"prefs.control.font_style"),
+                                                                LGLocalized(@"prefs.subtitle.font_style"),
+                                                                @"current",
+                                                                @[
+                                                                    @{@"value": @"current", @"title": LGLocalized(@"prefs.font_style.current.title")},
+                                                                    @{@"value": @"rounded", @"title": LGLocalized(@"prefs.font_style.rounded.title")}
+                                                                ]),
+                                                 @"Lockscreen.Clock.Enabled",
+                                                 @YES)];
+        [items addObject:LGSettingControlledByKey(LGSliderSetting(@"Lockscreen.Clock.LegacyFontWeight",
+                                                                  LGLocalized(@"prefs.control.font_weight"),
+                                                                  LGLocalized(@"prefs.subtitle.font_weight"),
+                                                                  UIFontWeightHeavy,
+                                                                  0.0,
+                                                                  1.0,
+                                                                  2),
+                                                 @"Lockscreen.Clock.Enabled",
+                                                 @YES)];
+        [items addObject:LGSettingControlledByKey(LGSliderSetting(@"Lockscreen.Clock.LegacySizeBoost",
+                                                                  LGLocalized(@"prefs.control.size_boost"),
+                                                                  LGLocalized(@"prefs.subtitle.size_boost"),
+                                                                  1.05,
+                                                                  0.8,
+                                                                  1.3,
+                                                                  2),
+                                                 @"Lockscreen.Clock.Enabled",
+                                                 @YES)];
+        [items addObject:LGSettingControlledByKey(LGSliderSetting(@"Lockscreen.Clock.LegacyEmbolden",
+                                                                  LGLocalized(@"prefs.control.embolden"),
+                                                                  LGLocalized(@"prefs.subtitle.embolden"),
+                                                                  0.35,
+                                                                  0.0,
+                                                                  1.0,
+                                                                  2),
+                                                 @"Lockscreen.Clock.Enabled",
+                                                 @YES)];
     }
 
     return [items copy];

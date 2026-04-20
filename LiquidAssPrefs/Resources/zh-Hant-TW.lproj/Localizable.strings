@@ -16,6 +16,7 @@
 "prefs.control.enabled"="啟用";
 "prefs.control.floating_radius"="懸浮圓角";
 "prefs.control.font_weight"="字體粗細";
+"prefs.control.font_style"="字體樣式";
 "prefs.control.fps_limit"="FPS 上限";
 "prefs.control.full_screen_radius"="全螢幕圓角";
 "prefs.control.glass_thickness"="玻璃厚度";
@@ -29,6 +30,11 @@
 "prefs.control.row_inset"="列表內縮";
 "prefs.control.size_boost"="尺寸增強";
 "prefs.control.specular"="高光";
+"prefs.control.variable_font"="iOS 26 時鐘";
+"prefs.control.variable_font_height"="高度";
+"prefs.control.variable_font_softness"="柔和度";
+"prefs.control.variable_font_weight"="字重";
+"prefs.control.variable_font_width"="寬度";
 "prefs.hero.eyebrow"="沒有比這更厲害的了";
 "prefs.hero.subtitle"="史上最厲害的外掛";
 "prefs.info.title"="資訊";
@@ -103,6 +109,7 @@
 "prefs.subtitle.enabled"="啟用或關閉此玻璃視圖";
 "prefs.subtitle.floating_radius"="懸浮模式下玻璃視圖的圓角程度";
 "prefs.subtitle.font_weight"="用於傳統 iOS 15 及更早版本玻璃時鐘的字重。";
+"prefs.subtitle.font_style"="在目前樣式與圓角樣式之間切換傳統 iOS 15 時鐘。";
 "prefs.subtitle.fps_limit_120"="將即時玻璃算繪限制在 30 到 120 FPS 之間。較低的值可提升效能與電池續航力";
 "prefs.subtitle.fps_limit_60"="將即時玻璃算繪限制在 30 到 60 FPS 之間。較低的值可提升效能";
 "prefs.subtitle.full_screen_radius"="全螢幕模式下玻璃視圖的圓角程度";
@@ -118,6 +125,13 @@
 "prefs.subtitle.row_inset"="操作列表的左右內縮距離";
 "prefs.subtitle.size_boost"="相對於原生佈局，縮放傳統時鐘的尺寸。";
 "prefs.subtitle.specular"="玻璃視圖上的高光強度";
+"prefs.subtitle.variable_font"="可用時為玻璃時鐘使用 iOS 26 風格的自適應時鐘字體。";
+"prefs.subtitle.variable_font_height"="iOS 26 時鐘字體的高度軸數值。";
+"prefs.subtitle.variable_font_softness"="iOS 26 時鐘字體的柔和度軸數值。";
+"prefs.subtitle.variable_font_weight"="iOS 26 時鐘字體的字重軸數值。";
+"prefs.subtitle.variable_font_width"="iOS 26 時鐘字體的寬度軸數值。";
+"prefs.font_style.current.title"="一般";
+"prefs.font_style.rounded.title"="圓角";
 "prefs.surface.app_library.subtitle"="分類卡片和搜尋欄的材質";
 "prefs.surface.app_library.title"="App 資料庫";
 "prefs.surface.homescreen.subtitle"="Dock、檔案夾、內容選單、小工具以及 App 圖示底層";
