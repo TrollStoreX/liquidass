@@ -109,7 +109,7 @@
 "prefs.subtitle.enabled"="啟用或關閉此玻璃視圖";
 "prefs.subtitle.floating_radius"="懸浮模式下玻璃視圖的圓角程度";
 "prefs.subtitle.font_weight"="用於傳統 iOS 15 及更早版本玻璃時鐘的字重。";
-"prefs.subtitle.font_style"="在目前樣式與圓角樣式之間切換傳統 iOS 15 時鐘。";
+"prefs.subtitle.font_style"="在一般樣式與圓角樣式之間切換傳統 iOS 15 時鐘。";
 "prefs.subtitle.fps_limit_120"="將即時玻璃算繪限制在 30 到 120 FPS 之間。較低的值可提升效能與電池續航力";
 "prefs.subtitle.fps_limit_60"="將即時玻璃算繪限制在 30 到 60 FPS 之間。較低的值可提升效能";
 "prefs.subtitle.full_screen_radius"="全螢幕模式下玻璃視圖的圓角程度";

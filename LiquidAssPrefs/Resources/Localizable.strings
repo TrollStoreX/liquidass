@@ -49,7 +49,7 @@
 "prefs.subtitle.row_inset" = "Left and right padding for action rows.";
 "prefs.subtitle.rendering_method" = "Choose whether this surface samples from cached snapshots or live backdrop capture.";
 "prefs.subtitle.font_weight" = "Weight used for the legacy iOS 15 and lower glass clock.";
-"prefs.subtitle.font_style" = "Switches the legacy iOS 15 clock between the current and rounded styles.";
+"prefs.subtitle.font_style" = "Switches the legacy iOS 15 clock between the regular and rounded styles.";
 "prefs.subtitle.size_boost" = "Scales the legacy clock size relative to the stock layout.";
 "prefs.subtitle.embolden" = "Artificially thickens the legacy clock mask for a fuller look.";
 "prefs.subtitle.clock_gap" = "Vertical gap between the legacy clock and the date text.";

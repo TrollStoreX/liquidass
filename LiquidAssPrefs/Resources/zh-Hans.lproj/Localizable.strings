@@ -49,7 +49,7 @@
 "prefs.subtitle.row_inset" = "操作行的左右内边距";
 "prefs.subtitle.rendering_method" = "选择该界面使用缓存快照还是实时背景捕捉";
 "prefs.subtitle.font_weight" = "用于旧版 iOS 15 及以下玻璃时钟的字重";
-"prefs.subtitle.font_style" = "在当前样式和圆角样式之间切换旧版 iOS 15 时钟";
+"prefs.subtitle.font_style" = "在常规样式和圆角样式之间切换旧版 iOS 15 时钟";
 "prefs.subtitle.size_boost" = "相对于系统布局缩放旧版时钟大小";
 "prefs.subtitle.embolden" = "人为加粗旧版时钟遮罩以获得更饱满的外观";
 "prefs.subtitle.clock_gap" = "旧版时钟与日期文本之间的垂直间距";

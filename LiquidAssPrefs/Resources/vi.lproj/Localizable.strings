@@ -49,7 +49,7 @@
 "prefs.subtitle.row_inset" = "Lề trái và phải cho các hàng thao tác.";
 "prefs.subtitle.rendering_method" = "Chọn xem bề mặt này lấy mẫu từ ảnh chụp đã lưu hay từ chụp nền trực tiếp.";
 "prefs.subtitle.font_weight" = "Độ đậm dùng cho đồng hồ kính kiểu cũ trên iOS 15 trở xuống.";
-"prefs.subtitle.font_style" = "Chuyển đồng hồ iOS 15 kiểu cũ giữa kiểu hiện tại và kiểu bo tròn.";
+"prefs.subtitle.font_style" = "Chuyển đồng hồ iOS 15 kiểu cũ giữa kiểu thường và kiểu bo tròn.";
 "prefs.subtitle.size_boost" = "Phóng to đồng hồ kiểu cũ so với bố cục mặc định.";
 "prefs.subtitle.embolden" = "Làm dày giả mask đồng hồ kiểu cũ để nhìn đầy hơn.";
 "prefs.subtitle.clock_gap" = "Khoảng cách dọc giữa đồng hồ kiểu cũ và dòng ngày tháng.";
