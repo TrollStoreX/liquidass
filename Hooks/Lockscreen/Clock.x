@@ -54,7 +54,7 @@ static void LGSetLayerTreeOpacity(CALayer *layer, float opacity) {
 }
 
 static BOOL LGClockEnabled(void) {
-    return LGLockscreenEnabled()
+    return LG_globalEnabled()
         && LG_prefBool(@"Lockscreen.Clock.Enabled", YES);
 }
 
