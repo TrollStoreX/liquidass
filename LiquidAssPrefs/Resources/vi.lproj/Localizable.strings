@@ -209,3 +209,7 @@
 "prefs.subtitle.release_mass" = "Khối lượng lò xo của hoạt ảnh lúc thả nút mật mã.";
 "prefs.subtitle.release_stiffness" = "Độ cứng lò xo của hoạt ảnh lúc thả nút mật mã.";
 "prefs.subtitle.release_velocity" = "Vận tốc lò xo ban đầu của hoạt ảnh lúc thả nút mật mã.";
+"prefs.misc.rwb_third_party.title" = "Danh sách RWB";
+"prefs.misc.rwb_third_party.subtitle" = "Nhập bundle id widget cho danh sách cho phép RWB.";
+"prefs.misc.rwb_third_party.editor_body" = "Nhập mỗi bundle id trên một dòng.";
+"prefs.misc.rwb_third_party.placeholder" = "com.example.widget\ncom.example.anotherwidget";

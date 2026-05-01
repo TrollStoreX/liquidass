@@ -186,9 +186,9 @@
 "prefs.misc.about.subtitle" = "Language, about, version details, donate, etc.";
 "prefs.misc.options_section.title" = "Extra stuff";
 "prefs.misc.options_section.subtitle" = "Experimental features and other stuff.";
-"prefs.misc.rwb_third_party.title" = "3rd party app RWB";
-"prefs.misc.rwb_third_party.subtitle" = "Enter widget extension bundle ids for third party apps.";
-"prefs.misc.rwb_third_party.editor_body" = "Enter one target bundle id per line.";
+"prefs.misc.rwb_third_party.title" = "RWB list";
+"prefs.misc.rwb_third_party.subtitle" = "Enter widget bundle ids for the RWB allowlist.";
+"prefs.misc.rwb_third_party.editor_body" = "Enter one bundle id per line.";
 "prefs.misc.rwb_third_party.placeholder" = "com.example.widget\ncom.example.anotherwidget";
 "prefs.misc.experimental.title" = "Experimental";
 "prefs.misc.experimental.subtitle" = "Rendering methods and unstable features.";

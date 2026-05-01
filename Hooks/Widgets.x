@@ -97,6 +97,22 @@ static UIViewController *LGNearestWidgetStackControllerForView(UIView *view) {
     return nil;
 }
 
+static BOOL LGWidgetViewContainsVisibleLargeMaterialHost(UIView *view, NSInteger depth) {
+    if (!view || depth > 24) return NO;
+    if (LGWidgetHostUsesStockMaterialBlur(view) &&
+        view.bounds.size.width >= 120.0 &&
+        view.bounds.size.height >= 120.0 &&
+        view.alpha > 0.01 &&
+        view.layer.opacity > 0.01f &&
+        !view.hidden) {
+        return YES;
+    }
+    for (UIView *subview in view.subviews) {
+        if (LGWidgetViewContainsVisibleLargeMaterialHost(subview, depth + 1)) return YES;
+    }
+    return NO;
+}
+
 static BOOL LGWidgetHasAncestorClassNamedWithinDepth(UIView *view, NSString *className, NSInteger maxDepth) {
     UIView *ancestor = view.superview;
     NSInteger depth = 0;
@@ -126,6 +142,30 @@ static BOOL LGWidgetContainerLooksLikeHomescreenWidgetHost(UIView *view) {
         break;
     }
     return hasWidgetScrollSibling;
+}
+
+static UIView *LGWidgetRawAncestorContainerHostForView(UIView *view) {
+    UIView *ancestor = view;
+    NSInteger depth = 0;
+    while (ancestor && depth < 12) {
+        if ([NSStringFromClass(ancestor.class) isEqualToString:@"UIView"] &&
+            LGResponderChainContainsClassNamed(ancestor, @"SBHWidgetStackViewController") &&
+            LGWidgetViewContainsDescendantNamed(ancestor, @"BSUIScrollView", 0) &&
+            ancestor.bounds.size.width >= 120.0 &&
+            ancestor.bounds.size.height >= 120.0) {
+            return ancestor;
+        }
+        ancestor = ancestor.superview;
+        depth++;
+    }
+    return nil;
+}
+
+static UIView *LGWidgetAncestorContainerHostForView(UIView *view) {
+    UIView *candidate = LGWidgetRawAncestorContainerHostForView(view);
+    if (!candidate) return nil;
+    if (LGWidgetViewContainsVisibleLargeMaterialHost(candidate, 0)) return nil;
+    return candidate;
 }
 
 static NSArray *LGWidgetCleanedFilterArray(NSArray *filters, BOOL *didRemoveAny) {
@@ -271,6 +311,11 @@ static BOOL LGIsWidgetGlassHostView(UIView *view) {
         if ([view isKindOfClass:[UIScrollView class]]) return NO;
         if (view.bounds.size.width < 120.0 || view.bounds.size.height < 120.0) return NO;
         if (!LGWidgetContainerLooksLikeHomescreenWidgetHost(view)) return NO;
+        return YES;
+    }
+
+    if ([className isEqualToString:@"UIView"] &&
+        view == LGWidgetAncestorContainerHostForView(view)) {
         return YES;
     }
 
@@ -491,6 +536,42 @@ static void LGWidgetsPrefsChanged(CFNotificationCenterRef center,
     %orig;
     if (!LGViewBelongsToWidgetStack((UIView *)self)) return;
     if (!sWidgetDisplayLinkState.link) LG_updateRegisteredGlassViews(LGUpdateGroupWidgets);
+}
+
+%end
+
+%hook BSUIScrollView
+
+- (void)didMoveToWindow {
+    %orig;
+    UIView *host = LGWidgetAncestorContainerHostForView((UIView *)self);
+    if (!host) return;
+
+    if (!LGWidgetEnabled()) {
+        LGDetachWidgetGlassHostView(host);
+        return;
+    }
+
+    LGInjectIntoWidgetGlassHostView(host);
+    if (![objc_getAssociatedObject(host, kWidgetAttachedKey) boolValue]) {
+        objc_setAssociatedObject(host, kWidgetAttachedKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        sWidgetDisplayLinkState.activeCount++;
+        LGStartWidgetDisplayLink();
+    }
+}
+
+- (void)layoutSubviews {
+    %orig;
+    UIView *host = LGWidgetAncestorContainerHostForView((UIView *)self);
+    if (!host) return;
+    if (!LGIsWidgetGlassHostView(host)) return;
+    if (!LGWidgetEnabled()) {
+        LGDetachWidgetGlassHostView(host);
+        return;
+    }
+    ensureWidgetTintOverlay(host);
+    LiquidGlassView *glass = objc_getAssociatedObject(host, kWidgetGlassKey);
+    [glass updateOrigin];
 }
 
 %end

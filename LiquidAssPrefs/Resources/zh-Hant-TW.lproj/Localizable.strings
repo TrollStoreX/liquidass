@@ -195,3 +195,7 @@
 "prefs.subtitle.release_mass"="密碼按鈕放開動畫的彈簧質量。";
 "prefs.subtitle.release_stiffness"="密碼按鈕放開動畫的彈簧剛度。";
 "prefs.subtitle.release_velocity"="密碼按鈕放開動畫的初始彈簧速度。";
+"prefs.misc.rwb_third_party.title" = "RWB list";
+"prefs.misc.rwb_third_party.subtitle" = "Enter widget bundle ids for the RWB allowlist.";
+"prefs.misc.rwb_third_party.editor_body" = "Enter one bundle id per line.";
+"prefs.misc.rwb_third_party.placeholder" = "com.example.widget\ncom.example.anotherwidget";

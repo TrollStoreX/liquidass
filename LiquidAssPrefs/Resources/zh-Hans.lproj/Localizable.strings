@@ -208,3 +208,7 @@
 "prefs.subtitle.release_mass" = "密码按钮松开动画的弹簧质量。";
 "prefs.subtitle.release_stiffness" = "密码按钮松开动画的弹簧刚度。";
 "prefs.subtitle.release_velocity" = "密码按钮松开动画的初始弹簧速度。";
+"prefs.misc.rwb_third_party.title" = "RWB list";
+"prefs.misc.rwb_third_party.subtitle" = "Enter widget bundle ids for the RWB allowlist.";
+"prefs.misc.rwb_third_party.editor_body" = "Enter one bundle id per line.";
+"prefs.misc.rwb_third_party.placeholder" = "com.example.widget\ncom.example.anotherwidget";
