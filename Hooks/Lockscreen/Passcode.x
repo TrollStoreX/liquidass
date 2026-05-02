@@ -148,6 +148,10 @@ static void LGUpdatePasscodeVisible(BOOL visible) {
     });
 }
 
+BOOL LGPasscodeVisible(void) {
+    return sLGPasscodeVisible;
+}
+
 static BOOL LGIsPasscodeBackgroundMaterialView(UIView *view) {
     if (!view) return NO;
     if (![NSStringFromClass(view.class) isEqualToString:@"MTMaterialView"]) return NO;
