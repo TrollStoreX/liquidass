@@ -209,8 +209,6 @@ static UIView *LGPasscodeButtonBackgroundHost(UIView *button) {
 
     UIView *best = nil;
     CGFloat bestScore = CGFLOAT_MAX;
-    CGPoint buttonCenter = CGPointMake(CGRectGetMidX(button.bounds), CGRectGetMidY(button.bounds));
-    CGFloat buttonMaxDimension = MAX(CGRectGetWidth(button.bounds), CGRectGetHeight(button.bounds));
     for (UIView *subview in button.subviews) {
         if (![NSStringFromClass(subview.class) isEqualToString:@"UIView"]) continue;
         if (CGRectIsEmpty(subview.bounds)) continue;
@@ -218,15 +216,10 @@ static UIView *LGPasscodeButtonBackgroundHost(UIView *button) {
         CGFloat height = CGRectGetHeight(subview.bounds);
         if (width < 40.0 || height < 40.0) continue;
 
-        CGPoint center = CGPointMake(CGRectGetMidX(subview.frame), CGRectGetMidY(subview.frame));
-        CGFloat centerDistance = hypot(center.x - buttonCenter.x, center.y - buttonCenter.y);
-        CGFloat diameter = MIN(width, height);
-        CGFloat areaPenalty = buttonMaxDimension > 0.0 ? (buttonMaxDimension - diameter) : 0.0;
-        CGFloat score = fabs(width - height) * 4.0;
-        score += fabs(subview.layer.cornerRadius - diameter * 0.5) * 3.0;
-        score += centerDistance * 2.0;
-        score += MAX(0.0, areaPenalty) * 1.5;
-        score += fabs(subview.alpha - 1.0) * 20.0;
+        CGFloat score = fabs(width - height);
+        score += fabs(subview.layer.cornerRadius - MIN(width, height) * 0.5);
+        score += fabs(subview.alpha - 0.15) * 100.0;
+        score += subview.subviews.count * 50.0;
         LGDebugLog(@"passcode host candidate class=%@ frame=%@ bounds=%@ alpha=%.2f cr=%.2f subviews=%lu score=%.2f",
                    NSStringFromClass(subview.class),
                    NSStringFromCGRect(subview.frame),
@@ -351,6 +344,21 @@ static CGFloat LGPasscodeButtonTargetBlur(BOOL highlighted) {
     return highlighted ? LGPasscodeActiveBlur() : LGPasscodeBlur();
 }
 
+static void LGApplyPasscodeButtonSurfaceState(UIView *host, BOOL highlighted) {
+    if (!host) return;
+    UIView *tint = objc_getAssociatedObject(host, kLGPasscodeButtonTintKey);
+    LiquidGlassView *glass = LGPasscodeButtonGlassView(host);
+    if (tint) {
+        tint.backgroundColor = LGPasscodeButtonTargetTint(highlighted);
+    }
+    if (glass) {
+        glass.specularOpacity = LGPasscodeButtonTargetSpecular(highlighted);
+        glass.bezelWidth = LGPasscodeButtonTargetBezel(highlighted);
+        glass.refractionScale = LGPasscodeButtonTargetRefraction(highlighted);
+        glass.blur = LGPasscodeButtonTargetBlur(highlighted);
+    }
+}
+
 static void LGApplyPasscodeButtonVisualState(UIView *host, BOOL highlighted, BOOL animated) {
     if (!host) return;
 
@@ -387,13 +395,7 @@ static void LGApplyPasscodeButtonVisualState(UIView *host, BOOL highlighted, BOO
 
     void (^changes)(void) = ^{
         host.transform = targetTransform;
-        tint.backgroundColor = targetTint;
-        if (glass) {
-            glass.specularOpacity = targetSpecular;
-            glass.bezelWidth = targetBezel;
-            glass.refractionScale = targetRefraction;
-            glass.blur = targetBlur;
-        }
+        LGApplyPasscodeButtonSurfaceState(host, highlighted);
     };
 
     if (!animated) {
@@ -531,10 +533,11 @@ static void LGInjectPasscodeButtonIfNeeded(UIView *button) {
     }
     BOOL alreadyInjected = previousHost == host && LGPasscodeButtonGlassView(host) && tint != nil;
     LGSetPasscodeStoredButtonHost(button, host);
+    BOOL highlighted = [objc_getAssociatedObject(button, kLGPasscodeButtonHighlightedKey) boolValue];
     if (!alreadyInjected) {
-        BOOL highlighted = [objc_getAssociatedObject(button, kLGPasscodeButtonHighlightedKey) boolValue];
         LGApplyPasscodeButtonVisualState(host, highlighted, NO);
     } else {
+        LGApplyPasscodeButtonSurfaceState(host, highlighted);
         LGDebugLog(@"passcode inject reuse host=%@ frame=%@ transform=%@",
                    NSStringFromClass(host.class),
                    NSStringFromCGRect(host.frame),
@@ -546,6 +549,17 @@ static void LGInjectPasscodeButtonIfNeeded(UIView *button) {
                cornerRadius,
                tint.backgroundColor,
                LGPasscodeButtonGlassView(host));
+    if (glass) {
+        LGDebugLog(@"passcode inject geometry button=%@ hostBounds=%@ glassBounds=%@ maskSize=%@ mode=%@ bezel=%.2f blur=%.2f refr=%.2f",
+                   NSStringFromCGRect(button.bounds),
+                   NSStringFromCGRect(host.bounds),
+                   NSStringFromCGRect(glass.bounds),
+                   NSStringFromCGSize(glass.shapeMaskImage.size),
+                   LGPasscodeRenderingModeKey(),
+                   glass.bezelWidth,
+                   glass.blur,
+                   glass.refractionScale);
+    }
     LGAttachLockHostIfNeeded(host);
 }
 

@@ -14,20 +14,6 @@ static void *kAppIconLastGlassFrameKey = &kAppIconLastGlassFrameKey;
 static void *kAppIconBackdropViewKey = &kAppIconBackdropViewKey;
 static const CGFloat kAppIconImageScale = 0.99;
 
-static BOOL LGAppIconHostHasLabelShadowBranch(UIView *host) {
-    if (!host) return NO;
-    for (UIView *subview in host.subviews) {
-        if (![NSStringFromClass(subview.class) isEqualToString:@"UIView"]) continue;
-        for (UIView *shadowCandidate in subview.subviews) {
-            if (![NSStringFromClass(shadowCandidate.class) isEqualToString:@"SBUILegibilityShadowView"]) continue;
-            for (UIView *imageCandidate in shadowCandidate.subviews) {
-                if ([imageCandidate isKindOfClass:[UIImageView class]]) return YES;
-            }
-        }
-    }
-    return NO;
-}
-
 LG_ENABLED_BOOL_PREF_FUNC(LGAppIconsEnabled, "AppIcons.Enabled", NO)
 LG_FLOAT_PREF_FUNC(LGAppIconCornerRadius, "AppIcons.CornerRadius", 13.5)
 LG_FLOAT_PREF_FUNC(LGAppIconBezelWidth, "AppIcons.BezelWidth", 14.0)
@@ -47,10 +33,23 @@ static BOOL LGIsHomescreenIconImageView(UIView *view) {
     UIView *parent = view.superview;
     if (!parent) return NO;
     if (![NSStringFromClass(parent.class) isEqualToString:@"SBFTouchPassThroughView"]) return NO;
+    if (LGResponderChainContainsClassNamed(parent, @"SBHWidgetStackViewController")) return NO;
     UIView *grandparent = parent.superview;
     if (!grandparent) return NO;
     if (![NSStringFromClass(grandparent.class) isEqualToString:@"SBIconView"]) return NO;
-    if (!LGAppIconHostHasLabelShadowBranch(parent)) return NO;
+    if (LGResponderChainContainsClassNamed(grandparent, @"SBHWidgetStackViewController")) return NO;
+    UIView *iconListView = grandparent.superview;
+    if (!iconListView) return NO;
+    if (![NSStringFromClass(iconListView.class) isEqualToString:@"SBIconListView"]) return NO;
+    BOOL hasMaterialSibling = NO;
+    for (UIView *sibling in iconListView.subviews) {
+        if (sibling == grandparent) continue;
+        if ([NSStringFromClass(sibling.class) isEqualToString:@"MTMaterialView"]) {
+            hasMaterialSibling = YES;
+            break;
+        }
+    }
+    if (!hasMaterialSibling) return NO;
     return YES;
 }
 
