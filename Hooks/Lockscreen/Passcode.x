@@ -209,6 +209,8 @@ static UIView *LGPasscodeButtonBackgroundHost(UIView *button) {
 
     UIView *best = nil;
     CGFloat bestScore = CGFLOAT_MAX;
+    CGPoint buttonCenter = CGPointMake(CGRectGetMidX(button.bounds), CGRectGetMidY(button.bounds));
+    CGFloat buttonMaxDimension = MAX(CGRectGetWidth(button.bounds), CGRectGetHeight(button.bounds));
     for (UIView *subview in button.subviews) {
         if (![NSStringFromClass(subview.class) isEqualToString:@"UIView"]) continue;
         if (CGRectIsEmpty(subview.bounds)) continue;
@@ -216,10 +218,15 @@ static UIView *LGPasscodeButtonBackgroundHost(UIView *button) {
         CGFloat height = CGRectGetHeight(subview.bounds);
         if (width < 40.0 || height < 40.0) continue;
 
-        CGFloat score = fabs(width - height);
-        score += fabs(subview.layer.cornerRadius - MIN(width, height) * 0.5);
-        score += fabs(subview.alpha - 0.15) * 100.0;
-        score += subview.subviews.count * 50.0;
+        CGPoint center = CGPointMake(CGRectGetMidX(subview.frame), CGRectGetMidY(subview.frame));
+        CGFloat centerDistance = hypot(center.x - buttonCenter.x, center.y - buttonCenter.y);
+        CGFloat diameter = MIN(width, height);
+        CGFloat areaPenalty = buttonMaxDimension > 0.0 ? (buttonMaxDimension - diameter) : 0.0;
+        CGFloat score = fabs(width - height) * 4.0;
+        score += fabs(subview.layer.cornerRadius - diameter * 0.5) * 3.0;
+        score += centerDistance * 2.0;
+        score += MAX(0.0, areaPenalty) * 1.5;
+        score += fabs(subview.alpha - 1.0) * 20.0;
         LGDebugLog(@"passcode host candidate class=%@ frame=%@ bounds=%@ alpha=%.2f cr=%.2f subviews=%lu score=%.2f",
                    NSStringFromClass(subview.class),
                    NSStringFromCGRect(subview.frame),
