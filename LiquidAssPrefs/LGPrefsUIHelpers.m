@@ -162,7 +162,6 @@ void LGPresentSliderValuePrompt(UIViewController *controller, UILabel *valueLabe
         CGFloat rawValue = parsedNumber.doubleValue;
         CGFloat sliderValue = MIN(MAX(rawValue, minValue), maxValue);
         slider.value = sliderValue;
-        // Manual entry intentionally stores the raw value even when the slider rail clamps visually.
         valueLabel.text = LGFormatSliderValue(rawValue, decimals);
         LGWritePreference(preferenceKey, @(rawValue));
     }]];
@@ -470,7 +469,6 @@ void LGPresentResetConfirmationWithBody(UIViewController *controller, NSString *
     [resetButton addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull _) {
         LGDismissOverlayPanel(overlay, panel);
         if (resetSelector && [controller respondsToSelector:resetSelector]) {
-            // The reset selector is a local void-returning method on our prefs controllers.
             ((void (*)(id, SEL))objc_msgSend)(controller, resetSelector);
         } else {
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.67 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
@@ -947,7 +945,7 @@ void LGPresentMultilineTextInputSheet(UIViewController *controller,
     UITextView *textView = [[UITextView alloc] initWithFrame:CGRectZero];
     textView.translatesAutoresizingMaskIntoConstraints = NO;
     textView.backgroundColor = UIColor.clearColor;
-    textView.font = [UIFont monospacedSystemFontOfSize:14.0 weight:UIFontWeightMedium];
+    textView.font = [UIFont monospacedSystemFontOfSize:13.0 weight:UIFontWeightMedium];
     textView.textColor = [UIColor labelColor];
     textView.textContainerInset = UIEdgeInsetsMake(12.0, 10.0, 12.0, 10.0);
     textView.autocorrectionType = UITextAutocorrectionTypeNo;
@@ -962,7 +960,7 @@ void LGPresentMultilineTextInputSheet(UIViewController *controller,
     UILabel *placeholderLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     placeholderLabel.translatesAutoresizingMaskIntoConstraints = NO;
     placeholderLabel.text = placeholder.length ? placeholder : @"";
-    placeholderLabel.font = [UIFont monospacedSystemFontOfSize:14.0 weight:UIFontWeightMedium];
+    placeholderLabel.font = [UIFont monospacedSystemFontOfSize:13.0 weight:UIFontWeightMedium];
     placeholderLabel.textColor = [UIColor tertiaryLabelColor];
     placeholderLabel.numberOfLines = 0;
     placeholderLabel.userInteractionEnabled = NO;

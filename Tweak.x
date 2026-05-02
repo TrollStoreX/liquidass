@@ -355,6 +355,11 @@ static void LGSetCachedTransientImage(NSString *key, UIImage *image) {
     }
 }
 
+static UIImage *LGGetCachedTransientImage(NSString *key) {
+    if (!key.length) return nil;
+    return [LGTransientImageCache() objectForKey:key];
+}
+
 static void LGSetCachedSnapshotImage(UIImage *image) {
     sCachedSnapshot = image;
     LGSetCachedTransientImage(kLGSnapshotImageCacheKey, image);
@@ -865,9 +870,11 @@ static BOOL LG_drawLockscreenWallpaperInContext(CGSize screenSize) {
 }
 
 void LG_refreshHomescreenSnapshot(void) {
+    CFTimeInterval profileStart = LGProfileBegin();
     LGAssertMainThread();
     if (!LG_globalEnabled()) {
         LGSetCachedSnapshotImage(nil);
+        LGProfileEnd(@"homescreen.snapshot_refresh", profileStart);
         return;
     }
     UIImage *asset = LG_loadSpringBoardWallpaperImage(NO);
@@ -882,6 +889,7 @@ void LG_refreshHomescreenSnapshot(void) {
                    asset.scale,
                    (long)asset.imageOrientation);
         LGSetCachedSnapshotImage(asset);
+        LGProfileEnd(@"homescreen.snapshot_refresh", profileStart);
         return;
     }
 
@@ -894,12 +902,16 @@ void LG_refreshHomescreenSnapshot(void) {
     UIImage *img = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
 
-    if (!ok || LG_imageLooksBlack(img)) return;
+    if (!ok || LG_imageLooksBlack(img)) {
+        LGProfileEnd(@"homescreen.snapshot_refresh", profileStart);
+        return;
+    }
     LGDebugLog(@"refresh homescreen snapshot live result image=%@ scale=%.2f orientation=%ld",
                NSStringFromCGSize(img.size),
                img.scale,
                (long)img.imageOrientation);
     LGSetCachedSnapshotImage(img);
+    LGProfileEnd(@"homescreen.snapshot_refresh", profileStart);
 }
 
 static void hideGlassViews(UIView *root, NSMutableArray *list) {
@@ -1295,7 +1307,14 @@ UIImage *LG_getHomescreenSnapshot(CGPoint *outOriginInScreenPts) {
         if (outOriginInScreenPts) *outOriginInScreenPts = CGPointZero;
         return nil;
     }
-    if (!sCachedSnapshot) LG_refreshHomescreenSnapshot();
+    if (!sCachedSnapshot) {
+        UIImage *cachedSnapshot = LGGetCachedTransientImage(kLGSnapshotImageCacheKey);
+        if (cachedSnapshot) {
+            sCachedSnapshot = cachedSnapshot;
+        } else {
+            LG_refreshHomescreenSnapshot();
+        }
+    }
     UIImage *asset = LG_loadSpringBoardWallpaperImage(NO);
     if (asset && outOriginInScreenPts) {
         *outOriginInScreenPts = LG_isCPBitmapPath(LG_preferredSpringBoardWallpaperPath(NO))

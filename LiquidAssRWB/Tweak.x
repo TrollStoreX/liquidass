@@ -2,6 +2,7 @@
 
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
+#import "../Shared/LGRWBSupport.h"
 
 static BOOL kIsEnabled = YES;
 static BOOL kIsEnabledForSystemWidgets = YES;
@@ -49,24 +50,10 @@ static void ReloadPrefs(void) {
     kMaxWidgetWidth = 140.0;
     kMaxWidgetHeight = 140.0;
 
-    NSMutableOrderedSet<NSString *> *bundleIDs = [NSMutableOrderedSet orderedSetWithArray:@[
-        @"com.apple.mobiletimer.WorldClockWidget",
-        @"com.apple.mobilecal.CalendarWidgetExtension",
-        @"com.apple.mobilemail.MailWidgetExtension",
-        @"com.apple.ScreenTimeWidgetApplication.ScreenTimeWidgetExtension",
-        @"com.apple.reminders.WidgetExtension",
-        @"com.apple.weather.widget",
-        @"com.apple.Fitness.FitnessWidget",
-        @"com.apple.Passbook.PassbookWidgets",
-        @"com.apple.Health.Sleep.SleepWidgetExtension",
-        @"com.apple.tips.TipsSwift",
-        @"com.apple.Music.MusicWidgets",
-        @"com.apple.gamecenter.widgets.extension",
-        @"com.apple.tv.TVWidgetExtension",
-        @"com.apple.news.widget",
-        @"com.apple.Maps.GeneralMapsWidget"
-    ]];
-    [bundleIDs addObjectsFromArray:RWBParseThirdPartyBundleIDs(settings[@"RWB.ThirdPartyBundleIDs"])];
+    NSString *rawBundleIDs = [settings[@"RWB.ThirdPartyBundleIDs"] isKindOfClass:[NSString class]]
+        ? settings[@"RWB.ThirdPartyBundleIDs"]
+        : LGRWBDefaultWidgetBundleIDsText();
+    NSMutableOrderedSet<NSString *> *bundleIDs = [NSMutableOrderedSet orderedSetWithArray:RWBParseThirdPartyBundleIDs(rawBundleIDs)];
     kWidgetBundleIdentifiers = [NSSet setWithArray:bundleIDs.array];
 
     RWBLog(@"reload enabled=%d maxWidth=%.1f maxHeight=%.1f bundleCount=%lu", kIsEnabled, kMaxWidgetWidth, kMaxWidgetHeight, (unsigned long)kWidgetBundleIdentifiers.count);

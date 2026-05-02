@@ -9,6 +9,8 @@
 #import <math.h>
 #import <objc/runtime.h>
 
+BOOL LGPasscodeVisible(void);
+
 static void *kLGClockOverlayKey = &kLGClockOverlayKey;
 static void *kLGClockOriginalAlphaKey = &kLGClockOriginalAlphaKey;
 static void *kLGClockOriginalLayerOpacityKey = &kLGClockOriginalLayerOpacityKey;
@@ -20,6 +22,10 @@ static void *kLGClockLegacyNotificationPendingKey = &kLGClockLegacyNotificationP
 static void *kLGClockLegacyNotificationApplyingKey = &kLGClockLegacyNotificationApplyingKey;
 static LGDisplayLinkState sClockDisplayLinkState = {0};
 static NSHashTable<UIView *> *sClockHosts = nil;
+
+@interface UIView (LGClockDisplayLinkRefresh)
+- (void)refreshForDisplayLink;
+@end
 
 LG_FLOAT_PREF_FUNC(LGClockBezelWidth, "Lockscreen.Clock.BezelWidth", 24.0)
 LG_FLOAT_PREF_FUNC(LGClockGlassThickness, "Lockscreen.Clock.GlassThickness", 150.0)
@@ -54,7 +60,7 @@ static void LGSetLayerTreeOpacity(CALayer *layer, float opacity) {
 }
 
 static BOOL LGClockEnabled(void) {
-    return LGLockscreenEnabled()
+    return LG_globalEnabled()
         && LG_prefBool(@"Lockscreen.Clock.Enabled", YES);
 }
 
@@ -603,7 +609,12 @@ static void LGStartClockDisplayLink(void) {
         for (UIView *host in LGClockHostRegistry().allObjects) {
             if (!host.window || host.hidden || host.alpha <= 0.01f || host.layer.opacity <= 0.01f) continue;
             if (!LGIsClockHost(host)) continue;
-            LGApplyClockReplacement(host);
+            UIView *overlay = objc_getAssociatedObject(host, kLGClockOverlayKey);
+            if (!overlay || overlay.superview == nil) {
+                LGApplyClockReplacement(host);
+                continue;
+            }
+            [(id)overlay refreshForDisplayLink];
         }
     });
 }
@@ -1075,7 +1086,17 @@ static UIView *LGClockOverlayContainerForHost(UIView *host) {
 @property (nonatomic, assign) CGFloat displayTopInset;
 @property (nonatomic, weak) UIView *clockHost;
 @property (nonatomic, weak) UILabel *sourceLabel;
+@property (nonatomic, assign) CGRect cachedSourceFrameInContainer;
+@property (nonatomic, assign) CGRect cachedMaskBounds;
+@property (nonatomic, copy) NSString *cachedMaskText;
+@property (nonatomic, copy) NSAttributedString *cachedMaskAttributedText;
+@property (nonatomic, strong) UIFont *cachedMaskFont;
+@property (nonatomic, strong) id cachedMaskCTFont;
+@property (nonatomic, assign) NSTextAlignment cachedMaskAlignment;
+@property (nonatomic, assign) CGFloat cachedMaskTopInset;
+@property (nonatomic, strong) UIImage *cachedMaskImage;
 - (void)syncFromSourceLabel:(UILabel *)label;
+- (void)refreshForDisplayLink;
 @end
 
 @interface LGClockScrollObserver : NSObject
@@ -1090,6 +1111,43 @@ static UIView *LGClockOverlayContainerForHost(UIView *host) {
 @end
 
 @implementation LGClockGlassView
+
+- (void)lg_updateWallpaperSourceIfNeeded {
+    UIImage *wallpaper = LGClockWallpaperSource();
+    if (self.glassView.wallpaperImage != wallpaper) {
+        self.glassView.wallpaperImage = wallpaper;
+    }
+
+    CGPoint origin = LG_getLockscreenWallpaperOrigin();
+    CGPoint currentOrigin = self.glassView.wallpaperOrigin;
+    if (fabs(currentOrigin.x - origin.x) > 0.001 || fabs(currentOrigin.y - origin.y) > 0.001) {
+        self.glassView.wallpaperOrigin = origin;
+    }
+}
+
+- (BOOL)lg_rect:(CGRect)a differsFromRect:(CGRect)b {
+    return fabs(CGRectGetMinX(a) - CGRectGetMinX(b)) > 0.5 ||
+           fabs(CGRectGetMinY(a) - CGRectGetMinY(b)) > 0.5 ||
+           fabs(CGRectGetWidth(a) - CGRectGetWidth(b)) > 0.5 ||
+           fabs(CGRectGetHeight(a) - CGRectGetHeight(b)) > 0.5;
+}
+
+- (BOOL)lg_maskNeedsRebuildForBounds:(CGRect)bounds {
+    if (!self.cachedMaskImage) return YES;
+    if ([self lg_rect:self.cachedMaskBounds differsFromRect:bounds]) return YES;
+    if (![(self.cachedMaskText ?: @"") isEqualToString:(self.displayText ?: @"")]) return YES;
+    if ((self.cachedMaskAttributedText || self.displayAttributedText) &&
+        ![self.cachedMaskAttributedText isEqualToAttributedString:(self.displayAttributedText ?: [[NSAttributedString alloc] initWithString:@""])]) {
+        return YES;
+    }
+    if (self.cachedMaskAttributedText == nil && self.displayAttributedText.length > 0) return YES;
+    if (self.cachedMaskAttributedText.length > 0 && self.displayAttributedText == nil) return YES;
+    if (self.cachedMaskFont != self.displayFont && ![self.cachedMaskFont isEqual:self.displayFont]) return YES;
+    if (self.cachedMaskCTFont != self.displayCTFont) return YES;
+    if (self.cachedMaskAlignment != self.displayAlignment) return YES;
+    if (fabs(self.cachedMaskTopInset - self.displayTopInset) > 0.01) return YES;
+    return NO;
+}
 
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
@@ -1279,13 +1337,32 @@ static UIView *LGClockOverlayContainerForHost(UIView *host) {
 }
 
 - (void)lg_updateMask {
+    if (![self lg_maskNeedsRebuildForBounds:self.bounds]) {
+        self.glassView.shapeMaskImage = self.cachedMaskImage;
+        UIImageView *maskView = [[UIImageView alloc] initWithFrame:self.tintView.bounds];
+        maskView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        maskView.image = self.cachedMaskImage;
+        self.tintView.maskView = maskView;
+        self.hidden = (self.cachedMaskImage == nil);
+        return;
+    }
+
     UIImage *maskImage = [self lg_maskImageForBounds:self.bounds];
     if (!maskImage) {
+        self.cachedMaskImage = nil;
         self.glassView.shapeMaskImage = nil;
         self.tintView.maskView = nil;
         self.hidden = YES;
         return;
     }
+    self.cachedMaskImage = maskImage;
+    self.cachedMaskBounds = self.bounds;
+    self.cachedMaskText = [self.displayText copy];
+    self.cachedMaskAttributedText = [self.displayAttributedText copy];
+    self.cachedMaskFont = self.displayFont;
+    self.cachedMaskCTFont = self.displayCTFont;
+    self.cachedMaskAlignment = self.displayAlignment;
+    self.cachedMaskTopInset = self.displayTopInset;
     self.glassView.shapeMaskImage = maskImage;
     UIImageView *maskView = [[UIImageView alloc] initWithFrame:self.tintView.bounds];
     maskView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
@@ -1313,9 +1390,12 @@ static UIView *LGClockOverlayContainerForHost(UIView *host) {
         host = self.superview;
         while (host && !LGIsClockHost(host)) host = host.superview;
     }
+    CGRect sourceFrame = [label convertRect:label.bounds toView:self.superview];
+    self.cachedSourceFrameInContainer = sourceFrame;
     if (LGIsLegacyClockHost(host)) {
         UIView *container = self.superview ?: LGClockOverlayContainerForHost(host);
-        CGRect sourceFrame = [label convertRect:label.bounds toView:container];
+        sourceFrame = [label convertRect:label.bounds toView:container];
+        self.cachedSourceFrameInContainer = sourceFrame;
         UIFont *sourceFont = label.font ?: [UIFont systemFontOfSize:84.0 weight:UIFontWeightBold];
         BOOL useVariableFont = LGClockLegacyUsesVariableFont();
         CGFloat pointSize = useVariableFont
@@ -1344,7 +1424,8 @@ static UIView *LGClockOverlayContainerForHost(UIView *host) {
                                                                                 label,
                                                                                 sourceFont,
                                                                                 nil);
-        CGRect sourceFrame = [label convertRect:label.bounds toView:container];
+        sourceFrame = [label convertRect:label.bounds toView:container];
+        self.cachedSourceFrameInContainer = sourceFrame;
         CGFloat pointSize = MAX(sourceFont.pointSize * LGClockVariableFontSizeScale(), 1.0);
         CGFloat dynamicHeight = LGClockDynamicHeightAxisForContext(label, host, container, sourceFrame);
         CTFontRef renderCTFont = LGClockVariableCTFontForHeight(pointSize, dynamicHeight);
@@ -1371,6 +1452,32 @@ static UIView *LGClockOverlayContainerForHost(UIView *host) {
     self.tintView.backgroundColor = LGClockTintColorForView(host ?: self);
     self.hidden = !self.displayText.length;
     [self setNeedsLayout];
+}
+
+- (void)refreshForDisplayLink {
+    UILabel *label = self.sourceLabel;
+    if (!label || !self.superview || !self.clockHost.window) return;
+    if (LGIsModernClockHost(self.clockHost)) {
+        [self syncFromSourceLabel:label];
+        [self layoutIfNeeded];
+        return;
+    }
+    BOOL textChanged = ![(self.displayText ?: @"") isEqualToString:(label.text ?: @"")];
+    BOOL attributedChanged = (self.displayAttributedText || label.attributedText)
+        && ![self.displayAttributedText isEqualToAttributedString:(label.attributedText ?: [[NSAttributedString alloc] initWithString:@""])];
+    BOOL fontChanged = self.displayFont != label.font && ![self.displayFont isEqual:label.font];
+    BOOL alignmentChanged = self.displayAlignment != label.textAlignment;
+    BOOL topInsetChanged = fabs(self.displayTopInset - MAX(0.0, CGRectGetMinY(label.bounds))) > 0.01;
+    CGRect sourceFrame = [label convertRect:label.bounds toView:self.superview];
+    if (textChanged || attributedChanged || fontChanged || alignmentChanged || topInsetChanged ||
+        [self lg_rect:self.cachedSourceFrameInContainer differsFromRect:sourceFrame]) {
+        [self syncFromSourceLabel:label];
+        [self layoutIfNeeded];
+        return;
+    }
+    self.glassView.wallpaperImage = LGClockWallpaperSource();
+    self.glassView.wallpaperOrigin = LG_getLockscreenWallpaperOrigin();
+    [self.glassView updateOrigin];
 }
 
 @end
@@ -1488,7 +1595,19 @@ static void LGApplyClockReplacement(UIView *host) {
         objc_setAssociatedObject(host, kLGClockOverlayKey, nil, OBJC_ASSOCIATION_ASSIGN);
         LGDetachClockScrollObserver(host);
         LGDetachLockHostIfNeeded(host);
-        for (UIView *view in visibleSourceViews) LGRestoreClockSourceView(view);
+        BOOL keepLegacyHiddenForPasscode = LGIsLegacyClockHost(host) && LGPasscodeVisible();
+        for (UIView *view in visibleSourceViews) {
+            if (keepLegacyHiddenForPasscode) {
+                if (!objc_getAssociatedObject(view, kLGClockOriginalAlphaKey)) {
+                    objc_setAssociatedObject(view, kLGClockOriginalAlphaKey, @(view.alpha), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+                    objc_setAssociatedObject(view, kLGClockOriginalLayerOpacityKey, @(view.layer.opacity), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+                }
+                view.alpha = 0.0;
+                LGSetLayerTreeOpacity(view.layer, 0.0f);
+            } else {
+                LGRestoreClockSourceView(view);
+            }
+        }
         return;
     }
 

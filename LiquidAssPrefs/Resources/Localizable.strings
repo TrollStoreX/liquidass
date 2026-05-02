@@ -186,9 +186,9 @@
 "prefs.misc.about.subtitle" = "Language, about, version details, donate, etc.";
 "prefs.misc.options_section.title" = "Extra stuff";
 "prefs.misc.options_section.subtitle" = "Experimental features and other stuff.";
-"prefs.misc.rwb_third_party.title" = "3rd party app RWB";
-"prefs.misc.rwb_third_party.subtitle" = "Enter widget extension bundle ids for third party apps.";
-"prefs.misc.rwb_third_party.editor_body" = "Enter one target bundle id per line.";
+"prefs.misc.rwb_third_party.title" = "RWB list";
+"prefs.misc.rwb_third_party.subtitle" = "Enter widget bundle ids for the RWB allowlist.";
+"prefs.misc.rwb_third_party.editor_body" = "Enter one bundle id per line.";
 "prefs.misc.rwb_third_party.placeholder" = "com.example.widget\ncom.example.anotherwidget";
 "prefs.misc.experimental.title" = "Experimental";
 "prefs.misc.experimental.subtitle" = "Rendering methods and unstable features.";
@@ -198,6 +198,8 @@
 "prefs.misc.app_library_composite.subtitle" = "Also samples homescreen icons and not just the wallpaper in App Library.";
 "prefs.misc.debug_logging.title" = "Debug Logging";
 "prefs.misc.debug_logging.subtitle" = "Enable verbose diagnostic logs written to /tmp/LiquidAss.log";
+"prefs.misc.debug_profiling.title" = "Debug Profiling";
+"prefs.misc.debug_profiling.subtitle" = "Logs short performance summaries.";
 "prefs.misc.invalidate_caches.title" = "Invalidate Snapshot Caches";
 "prefs.misc.invalidate_caches.subtitle" = "Clears cached snapshots then rebuild them fresh.";
 "prefs.misc.import_export_section.title" = "Import/Export preferences";

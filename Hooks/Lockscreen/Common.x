@@ -11,6 +11,22 @@ static void *kLockBackdropViewKey = &kLockBackdropViewKey;
 
 static LGDisplayLinkState sLockDisplayLinkState = {0};
 
+static void LGLockscreenInjectGlassWithImageAndSettingsForMode(UIView *host,
+                                                               NSString *renderingModeKey,
+                                                               UIImage *wallpaper,
+                                                               CGPoint wallpaperOrigin,
+                                                               LGUpdateGroup updateGroup,
+                                                               CGFloat cornerRadius,
+                                                               CGFloat bezelWidth,
+                                                               CGFloat glassThickness,
+                                                               CGFloat refractionScale,
+                                                               CGFloat refractiveIndex,
+                                                               CGFloat specularOpacity,
+                                                               CGFloat blur,
+                                                               CGFloat wallpaperScale,
+                                                               CGFloat lightTintAlpha,
+                                                               CGFloat darkTintAlpha);
+
 static UIView *LGLockscreenHostContainer(UIView *host) {
     if (![host isKindOfClass:[UIVisualEffectView class]]) return host;
     return ((UIVisualEffectView *)host).contentView;
@@ -237,20 +253,21 @@ void LGLockscreenInjectGlassWithSettingsAndMode(UIView *host,
         return;
     }
     CGPoint wallpaperOrigin = LG_getLockscreenWallpaperOrigin();
-    LGLockscreenInjectGlassWithImageAndSettings(host,
-                                                wallpaper,
-                                                wallpaperOrigin,
-                                                LGUpdateGroupLockscreen,
-                                                cornerRadius,
-                                                bezelWidth,
-                                                glassThickness,
-                                                refractionScale,
-                                                refractiveIndex,
-                                                specularOpacity,
-                                                blur,
-                                                wallpaperScale,
-                                                lightTintAlpha,
-                                                darkTintAlpha);
+    LGLockscreenInjectGlassWithImageAndSettingsForMode(host,
+                                                       renderingModeKey,
+                                                       wallpaper,
+                                                       wallpaperOrigin,
+                                                       LGUpdateGroupLockscreen,
+                                                       cornerRadius,
+                                                       bezelWidth,
+                                                       glassThickness,
+                                                       refractionScale,
+                                                       refractiveIndex,
+                                                       specularOpacity,
+                                                       blur,
+                                                       wallpaperScale,
+                                                       lightTintAlpha,
+                                                       darkTintAlpha);
 }
 
 void LGLockscreenInjectGlassWithImageAndSettings(UIView *host,
@@ -267,6 +284,38 @@ void LGLockscreenInjectGlassWithImageAndSettings(UIView *host,
                                                  CGFloat wallpaperScale,
                                                  CGFloat lightTintAlpha,
                                                  CGFloat darkTintAlpha) {
+    LGLockscreenInjectGlassWithImageAndSettingsForMode(host,
+                                                       @"Lockscreen.RenderingMode",
+                                                       wallpaper,
+                                                       wallpaperOrigin,
+                                                       updateGroup,
+                                                       cornerRadius,
+                                                       bezelWidth,
+                                                       glassThickness,
+                                                       refractionScale,
+                                                       refractiveIndex,
+                                                       specularOpacity,
+                                                       blur,
+                                                       wallpaperScale,
+                                                       lightTintAlpha,
+                                                       darkTintAlpha);
+}
+
+static void LGLockscreenInjectGlassWithImageAndSettingsForMode(UIView *host,
+                                                               NSString *renderingModeKey,
+                                                               UIImage *wallpaper,
+                                                               CGPoint wallpaperOrigin,
+                                                               LGUpdateGroup updateGroup,
+                                                               CGFloat cornerRadius,
+                                                               CGFloat bezelWidth,
+                                                               CGFloat glassThickness,
+                                                               CGFloat refractionScale,
+                                                               CGFloat refractiveIndex,
+                                                               CGFloat specularOpacity,
+                                                               CGFloat blur,
+                                                               CGFloat wallpaperScale,
+                                                               CGFloat lightTintAlpha,
+                                                               CGFloat darkTintAlpha) {
     BOOL quickActionsHost = LGIsLockscreenQuickActionsHost(host);
     BOOL featureEnabled = quickActionsHost ? LGLockscreenQuickActionsFeatureEnabled() : LGLockscreenEnabled();
     if (!featureEnabled) {
@@ -298,9 +347,9 @@ void LGLockscreenInjectGlassWithImageAndSettings(UIView *host,
     if (!glass) return;
 
     UIView *container = LGLockscreenHostContainer(host);
-    NSString *resolvedRenderingModeKey = quickActionsHost
-        ? @"LockscreenQuickActions.RenderingMode"
-        : @"Lockscreen.RenderingMode";
+    NSString *resolvedRenderingModeKey = renderingModeKey.length
+        ? renderingModeKey
+        : (quickActionsHost ? @"LockscreenQuickActions.RenderingMode" : @"Lockscreen.RenderingMode");
     UIView *renderingHost = (quickActionsHost && [host isKindOfClass:[UIVisualEffectView class]])
         ? host
         : (container ?: host);

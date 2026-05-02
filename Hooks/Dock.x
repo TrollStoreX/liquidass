@@ -212,8 +212,10 @@ static void removeDockOverlays(UIView *host) {
 }
 
 static void injectIntoDock(UIView *self_) {
+    CFTimeInterval profileStart = LGProfileBegin();
     if (!LGDockEnabled()) {
         removeDockOverlays(self_);
+        LGProfileEnd(@"dock.inject", profileStart);
         return;
     }
     NSNumber *modeNumber = objc_getAssociatedObject(self_, kDockModeKey);
@@ -223,6 +225,7 @@ static void injectIntoDock(UIView *self_) {
                    NSStringFromClass(self_.class),
                    NSStringFromCGRect(self_.frame),
                    NSStringFromCGRect(self_.bounds));
+        LGProfileEnd(@"dock.inject", profileStart);
         return;
     }
     LGDebugLog(@"dock inject begin host=%@ mode=%@ frame=%@ bounds=%@ render=%@",
@@ -246,6 +249,7 @@ static void injectIntoDock(UIView *self_) {
             objc_setAssociatedObject(self_, kDockRetryKey, nil, OBJC_ASSOCIATION_ASSIGN);
             injectIntoDock(self_);
         });
+        LGProfileEnd(@"dock.inject", profileStart);
         return;
     }
 
@@ -288,6 +292,7 @@ static void injectIntoDock(UIView *self_) {
         LGDebugLog(@"dock inject bail reason=rendering-mode-failed mode=%@",
                    LG_prefString(@"Dock.RenderingMode", LGDefaultRenderingModeForKey(@"Dock.RenderingMode")));
         objc_setAssociatedObject(self_, kDockRetryKey, nil, OBJC_ASSOCIATION_ASSIGN);
+        LGProfileEnd(@"dock.inject", profileStart);
         return;
     }
     ensureDockTintOverlay(self_);
@@ -300,9 +305,11 @@ static void injectIntoDock(UIView *self_) {
                glass.cornerRadius,
                wallpaper ? NSStringFromCGSize(wallpaper.size) : @"{0,0}",
                NSStringFromCGPoint(wallpaperOrigin));
+    LGProfileEnd(@"dock.inject", profileStart);
 }
 
 static void LGDockRefreshAllHosts(void) {
+    CFTimeInterval profileStart = LGProfileBegin();
     UIApplication *app = UIApplication.sharedApplication;
     if (@available(iOS 13.0, *)) {
         for (UIScene *scene in app.connectedScenes) {
@@ -338,6 +345,7 @@ static void LGDockRefreshAllHosts(void) {
             });
         }
     }
+    LGProfileEnd(@"dock.refresh_all_hosts", profileStart);
 }
 
 static void LGDockPrefsChanged(CFNotificationCenterRef center,

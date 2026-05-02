@@ -3,6 +3,7 @@
 #import "LGPrefsUIHelpers.h"
 #import "LGPrefsLiquidSlider.h"
 #import "LGPrefsLiquidSwitch.h"
+#import "../Shared/LGRWBSupport.h"
 #import "../Shared/LGSharedSupport.h"
 #import <objc/runtime.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
@@ -330,9 +331,9 @@ static BOOL LGItemVisibleForCurrentPreferences(NSDictionary *item) {
 }
 
 - (void)editThirdPartyAppRWB {
-    NSString *existing = [LGReadPreferenceObject(@"RWB.ThirdPartyBundleIDs", @"") isKindOfClass:[NSString class]]
-        ? LGReadPreferenceObject(@"RWB.ThirdPartyBundleIDs", @"")
-        : @"";
+    NSString *existing = [LGReadPreferenceObject(@"RWB.ThirdPartyBundleIDs", LGRWBDefaultWidgetBundleIDsText()) isKindOfClass:[NSString class]]
+        ? LGReadPreferenceObject(@"RWB.ThirdPartyBundleIDs", LGRWBDefaultWidgetBundleIDsText())
+        : LGRWBDefaultWidgetBundleIDsText();
     LGPresentMultilineTextInputSheet(self,
                                      LGLocalized(@"prefs.misc.rwb_third_party.title"),
                                      LGLocalized(@"prefs.misc.rwb_third_party.editor_body"),

@@ -54,6 +54,9 @@ void LGObservePreferenceChanges(dispatch_block_t block);
 void LGLog(NSString *format, ...);
 void LGDebugLog(NSString *format, ...);
 void LGAssertMainThread(void);
+BOOL LGProfilingEnabled(void);
+CFTimeInterval LGProfileBegin(void);
+void LGProfileEnd(NSString *key, CFTimeInterval startTime);
 
 CGColorSpaceRef LGSharedRGBColorSpace(void);
 UIImage *LGNormalizedImageForUpload(UIImage *image);
