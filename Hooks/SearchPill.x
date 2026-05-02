@@ -108,10 +108,15 @@ static void LGSearchPillEnsureTintOverlay(UIView *host) {
 }
 
 static void LGSearchPillInject(UIView *host) {
-    if (!LGIsHomescreenSearchPillMaterialView(host)) return;
+    CFTimeInterval profileStart = LGProfileBegin();
+    if (!LGIsHomescreenSearchPillMaterialView(host)) {
+        LGProfileEnd(@"search_pill.inject", profileStart);
+        return;
+    }
     if (!host.window || !LGSearchPillEnabled()) {
         LGRemoveSearchPillGlass(host);
         LGSearchPillRestoreOriginalState(host);
+        LGProfileEnd(@"search_pill.inject", profileStart);
         return;
     }
 
@@ -119,6 +124,7 @@ static void LGSearchPillInject(UIView *host) {
     if (!snapshot && !LG_prefersLiveCapture(@"SearchPill.RenderingMode")) {
         LG_refreshHomescreenSnapshot();
         LGSearchPillScheduleRetry(host);
+        LGProfileEnd(@"search_pill.inject", profileStart);
         return;
     }
 
@@ -154,9 +160,11 @@ static void LGSearchPillInject(UIView *host) {
                                          snapshot,
                                          CGPointZero)) {
         LGSearchPillScheduleRetry(host);
+        LGProfileEnd(@"search_pill.inject", profileStart);
         return;
     }
     objc_setAssociatedObject(host, kSearchPillRetryKey, nil, OBJC_ASSOCIATION_ASSIGN);
+    LGProfileEnd(@"search_pill.inject", profileStart);
 }
 
 %group LGSearchPillSpringBoard

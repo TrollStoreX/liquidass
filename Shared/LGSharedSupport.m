@@ -38,6 +38,10 @@ static dispatch_queue_t sLGLogQueue;
 static NSFileHandle *sLGLogHandle;
 static NSString * const kLGDynamicDefaultPrefix = @"__dynamic_default.";
 static void *kLGImageStableCacheKeyAssociation = &kLGImageStableCacheKeyAssociation;
+static os_unfair_lock sLGProfileLock = OS_UNFAIR_LOCK_INIT;
+static NSMutableDictionary<NSString *, NSMutableDictionary<NSString *, NSNumber *> *> *sLGProfileStats = nil;
+static CFTimeInterval sLGProfileWindowStart = 0.0;
+static const CFTimeInterval kLGProfileFlushInterval = 2.0;
 
 static void LGCloseLogHandle(void) {
     if (!sLGLogHandle) return;
@@ -340,6 +344,79 @@ void LGDebugLog(NSString *format, ...) {
 
 void LGAssertMainThread(void) {
     NSCAssert([NSThread isMainThread], @"liquidass main thread only");
+}
+
+BOOL LGProfilingEnabled(void) {
+    return LG_prefBool(@"DebugProfiling.Enabled", NO);
+}
+
+CFTimeInterval LGProfileBegin(void) {
+    if (!LGProfilingEnabled()) return 0.0;
+    return CACurrentMediaTime();
+}
+
+void LGProfileEnd(NSString *key, CFTimeInterval startTime) {
+    if (startTime <= 0.0 || !key.length || !LGProfilingEnabled()) return;
+
+    CFTimeInterval now = CACurrentMediaTime();
+    CFTimeInterval elapsed = now - startTime;
+    if (elapsed < 0.0) elapsed = 0.0;
+
+    NSDictionary<NSString *, NSDictionary<NSString *, NSNumber *> *> *snapshot = nil;
+    CFTimeInterval windowDuration = 0.0;
+
+    os_unfair_lock_lock(&sLGProfileLock);
+    if (!sLGProfileStats) {
+        sLGProfileStats = [NSMutableDictionary dictionary];
+    }
+    if (sLGProfileWindowStart <= 0.0) {
+        sLGProfileWindowStart = now;
+    }
+
+    NSMutableDictionary<NSString *, NSNumber *> *bucket = sLGProfileStats[key];
+    if (!bucket) {
+        bucket = [@{@"count": @0, @"total": @0.0, @"max": @0.0} mutableCopy];
+        sLGProfileStats[key] = bucket;
+    }
+
+    NSUInteger count = bucket[@"count"].unsignedIntegerValue + 1;
+    double total = bucket[@"total"].doubleValue + elapsed;
+    double maxValue = MAX(bucket[@"max"].doubleValue, elapsed);
+    bucket[@"count"] = @(count);
+    bucket[@"total"] = @(total);
+    bucket[@"max"] = @(maxValue);
+
+    windowDuration = now - sLGProfileWindowStart;
+    if (windowDuration >= kLGProfileFlushInterval && sLGProfileStats.count > 0) {
+        snapshot = [sLGProfileStats copy];
+        [sLGProfileStats removeAllObjects];
+        sLGProfileWindowStart = now;
+    }
+    os_unfair_lock_unlock(&sLGProfileLock);
+
+    if (!snapshot.count || windowDuration <= 0.0) return;
+
+    NSArray<NSString *> *sortedKeys = [snapshot keysSortedByValueUsingComparator:^NSComparisonResult(NSDictionary<NSString *, NSNumber *> *lhs,
+                                                                                                     NSDictionary<NSString *, NSNumber *> *rhs) {
+        return [rhs[@"total"] compare:lhs[@"total"]];
+    }];
+    NSMutableArray<NSString *> *parts = [NSMutableArray arrayWithCapacity:sortedKeys.count];
+    for (NSString *bucketKey in sortedKeys) {
+        NSDictionary<NSString *, NSNumber *> *stats = snapshot[bucketKey];
+        double totalMs = stats[@"total"].doubleValue * 1000.0;
+        double maxMs = stats[@"max"].doubleValue * 1000.0;
+        NSUInteger countValue = stats[@"count"].unsignedIntegerValue;
+        double avgMs = countValue > 0 ? totalMs / (double)countValue : 0.0;
+        double cps = windowDuration > 0.0 ? (double)countValue / windowDuration : 0.0;
+        [parts addObject:[NSString stringWithFormat:@"%@ avg=%.2fms max=%.2fms count=%lu cps=%.1f total=%.2fms",
+                          bucketKey,
+                          avgMs,
+                          maxMs,
+                          (unsigned long)countValue,
+                          cps,
+                          totalMs]];
+    }
+    LGLog(@"profile window=%.2fs %@", windowDuration, [parts componentsJoinedByString:@" | "]);
 }
 
 CGColorSpaceRef LGSharedRGBColorSpace(void) {

@@ -13,7 +13,20 @@ static void *kAppIconOriginalTransformKey = &kAppIconOriginalTransformKey;
 static void *kAppIconLastGlassFrameKey = &kAppIconLastGlassFrameKey;
 static void *kAppIconBackdropViewKey = &kAppIconBackdropViewKey;
 static const CGFloat kAppIconImageScale = 0.99;
-static void LGAppIconsRefreshAllHosts(void);
+
+static BOOL LGAppIconHostHasLabelShadowBranch(UIView *host) {
+    if (!host) return NO;
+    for (UIView *subview in host.subviews) {
+        if (![NSStringFromClass(subview.class) isEqualToString:@"UIView"]) continue;
+        for (UIView *shadowCandidate in subview.subviews) {
+            if (![NSStringFromClass(shadowCandidate.class) isEqualToString:@"SBUILegibilityShadowView"]) continue;
+            for (UIView *imageCandidate in shadowCandidate.subviews) {
+                if ([imageCandidate isKindOfClass:[UIImageView class]]) return YES;
+            }
+        }
+    }
+    return NO;
+}
 
 LG_ENABLED_BOOL_PREF_FUNC(LGAppIconsEnabled, "AppIcons.Enabled", NO)
 LG_FLOAT_PREF_FUNC(LGAppIconCornerRadius, "AppIcons.CornerRadius", 13.5)
@@ -32,10 +45,12 @@ static BOOL LGIsHomescreenIconImageView(UIView *view) {
     if (![NSStringFromClass(view.class) isEqualToString:@"SBIconImageView"]) return NO;
 
     UIView *parent = view.superview;
-    UIView *grandparent = parent.superview;
-    if (!parent || !grandparent) return NO;
+    if (!parent) return NO;
     if (![NSStringFromClass(parent.class) isEqualToString:@"SBFTouchPassThroughView"]) return NO;
+    UIView *grandparent = parent.superview;
+    if (!grandparent) return NO;
     if (![NSStringFromClass(grandparent.class) isEqualToString:@"SBIconView"]) return NO;
+    if (!LGAppIconHostHasLabelShadowBranch(parent)) return NO;
     return YES;
 }
 
@@ -90,14 +105,19 @@ static void ensureAppIconTintOverlay(UIView *view) {
 }
 
 static void injectIntoAppIcon(UIView *view) {
+    CFTimeInterval profileStart = LGProfileBegin();
     if (!LGAppIconsEnabled()) {
         removeAppIconOverlays(view);
+        LGProfileEnd(@"app_icons.inject", profileStart);
         return;
     }
 
     UIView *host = LGAppIconHostView(view);
     CGRect frame = LGAppIconGlassFrameInHost(view, host);
-    if (CGRectIsEmpty(frame)) return;
+    if (CGRectIsEmpty(frame)) {
+        LGProfileEnd(@"app_icons.inject", profileStart);
+        return;
+    }
 
     LiquidGlassView *glass = objc_getAssociatedObject(host, kAppIconGlassKey);
     CGPoint wallpaperOrigin = CGPointZero;
@@ -110,6 +130,7 @@ static void injectIntoAppIcon(UIView *view) {
             objc_setAssociatedObject(host, kAppIconRetryKey, nil, OBJC_ASSOCIATION_ASSIGN);
             injectIntoAppIcon(view);
         });
+        LGProfileEnd(@"app_icons.inject", profileStart);
         return;
     }
 
@@ -153,6 +174,7 @@ static void injectIntoAppIcon(UIView *view) {
                                          wallpaper,
                                          wallpaperOrigin)) {
         objc_setAssociatedObject(host, kAppIconRetryKey, nil, OBJC_ASSOCIATION_ASSIGN);
+        LGProfileEnd(@"app_icons.inject", profileStart);
         return;
     }
     objc_setAssociatedObject(host, kAppIconLastGlassFrameKey,
@@ -163,15 +185,7 @@ static void injectIntoAppIcon(UIView *view) {
         if (view.window) ensureAppIconTintOverlay(view);
     });
     objc_setAssociatedObject(host, kAppIconRetryKey, nil, OBJC_ASSOCIATION_ASSIGN);
-}
-
-static void LGAppIconsRefreshAllHosts(void) {
-    UIWindow *window = LG_getHomescreenWindow();
-    if (!window) return;
-    LGTraverseViews(window, ^(UIView *view) {
-        if (!LGIsHomescreenIconImageView(view)) return;
-        injectIntoAppIcon(view);
-    });
+    LGProfileEnd(@"app_icons.inject", profileStart);
 }
 
 %hook SBIconImageView
@@ -234,14 +248,12 @@ static void LGAppIconsRefreshAllHosts(void) {
 
 - (void)setContentOffset:(CGPoint)offset {
     %orig;
-    if (LG_prefersLiveCapture(@"AppIcons.RenderingMode")) LGAppIconsRefreshAllHosts();
-    else LG_updateRegisteredGlassViews(LGUpdateGroupAppIcons);
+    LG_updateRegisteredGlassViews(LGUpdateGroupAppIcons);
 }
 
 - (void)setContentOffset:(CGPoint)offset animated:(BOOL)animated {
     %orig;
-    if (LG_prefersLiveCapture(@"AppIcons.RenderingMode")) LGAppIconsRefreshAllHosts();
-    else LG_updateRegisteredGlassViews(LGUpdateGroupAppIcons);
+    LG_updateRegisteredGlassViews(LGUpdateGroupAppIcons);
 }
 
 %end

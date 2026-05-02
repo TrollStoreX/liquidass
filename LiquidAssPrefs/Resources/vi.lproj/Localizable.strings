@@ -158,6 +158,8 @@
 "prefs.misc.app_library_composite.subtitle" = "Trong App Library sẽ lấy mẫu cả icon ở Homescreen chứ không chỉ wallpaper.";
 "prefs.misc.debug_logging.title" = "Ghi nhật ký gỡ lỗi";
 "prefs.misc.debug_logging.subtitle" = "Bật log chẩn đoán chi tiết được ghi vào /tmp/LiquidAss.log";
+"prefs.misc.debug_profiling.title" = "Hồ sơ hiệu năng";
+"prefs.misc.debug_profiling.subtitle" = "Ghi các bản tóm tắt ngắn về hiệu năng.";
 "prefs.misc.invalidate_caches.title" = "Xoá bộ nhớ đệm ảnh chụp";
 "prefs.misc.invalidate_caches.subtitle" = "Xóa các ảnh chụp đã lưu rồi tạo lại chúng từ đầu.";
 "prefs.misc.import_export_section.title" = "Nhập/xuất tuỳ chọn";
@@ -199,7 +201,7 @@
 "prefs.subtitle.active_bezel_width" = "Độ dày viền của nút mật mã khi được nhấn.";
 "prefs.subtitle.active_refraction" = "Độ mạnh khúc xạ của nút mật mã khi được nhấn.";
 "prefs.subtitle.active_blur" = "Độ mờ của nút mật mã khi được nhấn.";
-"prefs.subtitle.press_in_damping" = "Độ damping của hoạt ảnh lúc nhấn nút mật mã.";
+"prefs.subtitle.press_in_damping" = "Độ nảy của hoạt ảnh lúc nhấn nút mật mã.";
 "prefs.subtitle.press_in_duration" = "Thời lượng chuyển động của hoạt ảnh lúc nhấn nút mật mã.";
 "prefs.subtitle.press_in_mass" = "Khối lượng lò xo của hoạt ảnh lúc nhấn nút mật mã.";
 "prefs.subtitle.press_in_stiffness" = "Độ cứng lò xo của hoạt ảnh lúc nhấn nút mật mã.";

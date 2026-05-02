@@ -1239,6 +1239,10 @@ NSArray<NSDictionary *> *LGMoreOptionsItems(void) {
                                      LGLocalized(@"prefs.misc.debug_logging.title"),
                                      LGLocalized(@"prefs.misc.debug_logging.subtitle"),
                                      NO)];
+    [items addObject:LGSwitchSetting(@"DebugProfiling.Enabled",
+                                     LGLocalized(@"prefs.misc.debug_profiling.title"),
+                                     LGLocalized(@"prefs.misc.debug_profiling.subtitle"),
+                                     NO)];
     [items addObject:LGKeyedNavSetting(@"RWB.ThirdPartyBundleIDs",
                                        LGLocalized(@"prefs.misc.rwb_third_party.title"),
                                        LGLocalized(@"prefs.misc.rwb_third_party.subtitle"),

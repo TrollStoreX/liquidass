@@ -66,10 +66,7 @@ static BOOL LGViewBelongsToWidgetStack(UIView *view) {
 
 static void LGStartWidgetDisplayLink(void) {
     LGStartDisplayLinkState(&sWidgetDisplayLinkState, LGPreferredFramesPerSecondForKey(@"Homescreen.FPS", 30), ^{
-        LGWidgetsRefreshAllHosts();
-        if (!LG_prefersLiveCapture(@"Widgets.RenderingMode")) {
-            LG_updateRegisteredGlassViews(LGUpdateGroupWidgets);
-        }
+        LG_updateRegisteredGlassViews(LGUpdateGroupWidgets);
     });
 }
 
@@ -335,9 +332,11 @@ static void LGPrepareWidgetGlassHostView(UIView *view) {
 }
 
 static void LGInjectIntoWidgetGlassHostView(UIView *view) {
+    CFTimeInterval profileStart = LGProfileBegin();
     if (!LGWidgetEnabled()) {
         removeWidgetOverlays(view);
         LGRestoreWidgetOriginalState(view);
+        LGProfileEnd(@"widgets.inject", profileStart);
         return;
     }
     LiquidGlassView *glass = objc_getAssociatedObject(view, kWidgetGlassKey);
@@ -347,6 +346,7 @@ static void LGInjectIntoWidgetGlassHostView(UIView *view) {
     if (!wallpaper && !LG_prefersLiveCapture(@"Widgets.RenderingMode")) {
         removeWidgetOverlays(view);
         LGRestoreWidgetOriginalState(view);
+        LGProfileEnd(@"widgets.inject", profileStart);
         return;
     }
 
@@ -386,6 +386,7 @@ static void LGInjectIntoWidgetGlassHostView(UIView *view) {
                                          wallpaperOrigin)) {
         removeWidgetOverlays(view);
         LGRestoreWidgetOriginalState(view);
+        LGProfileEnd(@"widgets.inject", profileStart);
         return;
     }
     [view sendSubviewToBack:glass];
@@ -393,9 +394,11 @@ static void LGInjectIntoWidgetGlassHostView(UIView *view) {
     dispatch_async(dispatch_get_main_queue(), ^{
         if (view.window) ensureWidgetTintOverlay(view);
     });
+    LGProfileEnd(@"widgets.inject", profileStart);
 }
 
 static void LGWidgetsRefreshAllHosts(void) {
+    CFTimeInterval profileStart = LGProfileBegin();
     UIApplication *app = UIApplication.sharedApplication;
     void (^refreshWindow)(UIWindow *) = ^(UIWindow *window) {
         LGTraverseViews(window, ^(UIView *view) {
@@ -412,6 +415,7 @@ static void LGWidgetsRefreshAllHosts(void) {
     } else {
         for (UIWindow *window in LGApplicationWindows(app)) refreshWindow(window);
     }
+    LGProfileEnd(@"widgets.refresh_all_hosts", profileStart);
 }
 
 static void LGWidgetsPrefsChanged(CFNotificationCenterRef center,

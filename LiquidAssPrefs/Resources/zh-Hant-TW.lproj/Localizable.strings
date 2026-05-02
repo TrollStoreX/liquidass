@@ -48,6 +48,8 @@
 "prefs.misc.app_library_composite.title"="資料庫合成圖示";
 "prefs.misc.debug_logging.subtitle"="啟用寫入 /tmp/LiquidAss.log 的詳細診斷記錄";
 "prefs.misc.debug_logging.title"="除錯記錄";
+"prefs.misc.debug_profiling.title"="Debug Profiling";
+"prefs.misc.debug_profiling.subtitle"="Logs short performance summaries.";
 "prefs.misc.invalidate_caches.title"="使快照快取失效";
 "prefs.misc.invalidate_caches.subtitle"="清除已快取的快照，然後重新建立它們。";
 "prefs.misc.import_export_section.title"="Import/Export preferences";
